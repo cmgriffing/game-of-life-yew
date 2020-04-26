@@ -6,13 +6,19 @@ This template shows how to create a web app using Yew and wasm-pack.
 
 ## 🚴 Usage
 
-### 🛠️ Build with `yarn run build`
+### 🛠️ Build
+
+When building for the first time, ensure to install dependencies first.
+
+```
+yarn install
+```
 
 ```
 yarn run build
 ```
 
-### 🔬 Serve locally with `yarn run start:dev`
+### 🔬 Serve locally
 
 ```
 yarn run start:dev
