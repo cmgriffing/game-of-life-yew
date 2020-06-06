@@ -1,46 +1,105 @@
+mod components;
+mod core;
+
+use anyhow::Error;
 use log::*;
 use serde_derive::{Deserialize, Serialize};
+use std::time::Duration;
 use strum::IntoEnumIterator;
 use strum_macros::{EnumIter, ToString};
-use yew::format::Json;
+use yew::format::{Json, Nothing};
 use yew::prelude::*;
+use yew::services::fetch::{FetchService, FetchTask, Request, Response};
+use yew::services::interval::{IntervalService, IntervalTask};
 use yew::services::storage::{Area, StorageService};
+use yew::services::Task;
 
-const KEY: &str = "yew.todomvc.self";
+use crate::app::components::grid::GameGrid;
+use crate::app::components::header::AppHeader;
+
+use crate::app::core::game::{Cellule, GameState, LifeState};
+use crate::app::core::seeds::{seed_middle_line_starter, seed_pentadecathlon};
+
+const KEY: &str = "yew.gameofdeath.self";
+const MAXIMUM_LOOP_TURN_COUNT: usize = 15;
 
 pub struct App {
     link: ComponentLink<Self>,
     storage: StorageService,
     state: State,
+    #[allow(unused)]
+    interval_handle: Box<dyn Task>,
+    previous_steps: Vec<Vec<Cellule>>,
+    send_result_fetch_task: Option<FetchTask>,
+}
+
+#[derive(Copy, Clone, Serialize, Deserialize, Debug)]
+pub struct GridModification {
+    step_index: i32,
+    grid_index: i32,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct State {
-    entries: Vec<Entry>,
-    filter: Filter,
-    value: String,
-    edit_value: String,
+    grid: Vec<Vec<Pixel>>,
+    game_state: GameState,
+    is_playing: bool,
+    modification_count: i32,
+    step_count: i32,
+    active_count: i32,
+    modifications: Vec<GridModification>,
 }
 
 #[derive(Serialize, Deserialize)]
-struct Entry {
-    description: String,
-    completed: bool,
-    editing: bool,
+struct Pixel {
+    on: bool,
 }
 
 pub enum Msg {
-    Add,
-    Edit(usize),
-    Update(String),
-    UpdateEdit(String),
-    Remove(usize),
-    SetFilter(Filter),
-    ToggleAll,
-    ToggleEdit(usize),
-    Toggle(usize),
-    ClearCompleted,
+    GridClicked((i32, i32)),
+    HandleSendResultResponse(Result<ResultResponseData, Error>),
+    RandomSeed,
+    SendResult,
+    Start,
+    StepClicked,
+    Stop,
     Nope,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ResultResponseData {
+    message: String,
+}
+
+impl From<SendResultPayload> for std::result::Result<std::string::String, anyhow::Error> {
+    fn from(payload: SendResultPayload) -> Self {
+        Ok(format!(
+            "{{
+                \"game_state\": \"{:?}\",
+                \"step_count\": \"{:?}\",
+                \"active_count\": \"{:?}\",
+                \"modifications\": \"{:?}\",
+            }}",
+            payload.game_state, payload.step_count, payload.active_count, payload.modifications
+        )
+        .to_owned())
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SendResultPayload {
+    game_state: SerializedGameState,
+    step_count: i32,
+    active_count: i32,
+    modifications: Vec<GridModification>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SerializedGameState {
+    cellules: String,
+    pub active: bool,
+    pub cellules_width: usize,
+    pub cellules_height: usize,
 }
 
 impl Component for App {
@@ -49,23 +108,46 @@ impl Component for App {
 
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
         let storage = StorageService::new(Area::Local).unwrap();
-        let entries = {
-            if let Json(Ok(restored_entries)) = storage.restore(KEY) {
-                restored_entries
+        let grid = {
+            if let Json(Ok(restored_grid)) = storage.restore(KEY) {
+                restored_grid
             } else {
                 Vec::new()
             }
         };
+
+        let game_state = GameState {
+            active: false,
+            cellules: vec![
+                Cellule {
+                    life_state: LifeState::Dead
+                };
+                2000
+            ],
+            cellules_width: 50,
+            cellules_height: 40,
+        };
+
+        let interval_callback = link.callback(|_| Msg::StepClicked);
+
         let state = State {
-            entries,
-            filter: Filter::All,
-            value: "".into(),
-            edit_value: "".into(),
+            grid,
+            game_state,
+            is_playing: false,
+            modification_count: 0,
+            step_count: 0,
+            active_count: 0,
+            modifications: vec![],
         };
         App {
             link,
             storage,
             state,
+            interval_handle: Box::new(
+                IntervalService::new().spawn(Duration::from_millis(15), interval_callback),
+            ),
+            previous_steps: vec![],
+            send_result_fetch_task: None,
         }
     }
 
@@ -75,284 +157,200 @@ impl Component for App {
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
-            Msg::Add => {
-                let entry = Entry {
-                    description: self.state.value.clone(),
-                    completed: false,
-                    editing: false,
-                };
-                self.state.entries.push(entry);
-                self.state.value = "".to_string();
+            Msg::GridClicked((column_number, row_number)) => {
+                let index =
+                    row_number * (self.state.game_state.cellules_width as i32) + column_number;
+
+                self.state.modifications.push(GridModification {
+                    grid_index: index,
+                    step_index: self.state.step_count,
+                });
+
+                self.state.modification_count += 1;
+
+                // info!("{:?} {:?} {:?}", column_number, row_number, index);
+
+                self.state.game_state.toggle_cellule(index as usize);
             }
-            Msg::Edit(idx) => {
-                let edit_value = self.state.edit_value.clone();
-                self.state.complete_edit(idx, edit_value);
-                self.state.edit_value = "".to_string();
+            Msg::HandleSendResultResponse(send_result_response) => {
+                info!("send result response {:?}", send_result_response)
             }
-            Msg::Update(val) => {
-                println!("Input: {}", val);
-                self.state.value = val;
+            Msg::RandomSeed => {
+                self.state.modification_count = 0;
+                self.state.step_count = 0;
+                let cellules = seed_middle_line_starter(
+                    self.state.game_state.cellules_width as i32,
+                    self.state.game_state.cellules_height as i32,
+                );
+                self.state.game_state.set_cellules(cellules);
+
+                self.set_active_count();
+                self.previous_steps = vec![];
+                self.state.modifications = vec![];
             }
-            Msg::UpdateEdit(val) => {
-                println!("Input: {}", val);
-                self.state.edit_value = val;
+            Msg::SendResult => {}
+            Msg::Start => {
+                self.state.is_playing = true;
+                self.previous_steps = vec![];
             }
-            Msg::Remove(idx) => {
-                self.state.remove(idx);
+            Msg::StepClicked => {
+                // info!("step clicked");
+                if self.state.is_playing {
+                    let mut in_endless_loop = false;
+
+                    self.state.step_count += 1;
+                    self.state.game_state.step();
+
+                    for previous_step in self.previous_steps.iter() {
+                        if self.game_grids_are_identical(
+                            previous_step.to_vec(),
+                            self.state.game_state.cellules.clone(),
+                        ) {
+                            in_endless_loop = true;
+                        }
+                    }
+
+                    if in_endless_loop == true {
+                        self.state.is_playing = false;
+                        self.previous_steps = vec![];
+                        warn!("found endless loop");
+                        warn!("step: {:?}", self.state.step_count);
+                        warn!("modifications count: {:?}", self.state.modifications.len());
+                        warn!("modifications: {:?}", self.state.modifications);
+
+                        // make fetch request
+                        self.send_result_fetch_task = Some(self.fetch_json());
+
+                        return true;
+                    }
+
+                    let previous_steps_count = self.previous_steps.len();
+                    if previous_steps_count >= MAXIMUM_LOOP_TURN_COUNT {
+                        let extra_count = previous_steps_count - MAXIMUM_LOOP_TURN_COUNT;
+                        self.previous_steps.drain(0..extra_count);
+                    }
+                    self.previous_steps
+                        .push(self.state.game_state.cellules.clone());
+                }
+                self.set_active_count();
             }
-            Msg::SetFilter(filter) => {
-                self.state.filter = filter;
-            }
-            Msg::ToggleEdit(idx) => {
-                self.state.edit_value = self.state.entries[idx].description.clone();
-                self.state.toggle_edit(idx);
-            }
-            Msg::ToggleAll => {
-                let status = !self.state.is_all_completed();
-                self.state.toggle_all(status);
-            }
-            Msg::Toggle(idx) => {
-                self.state.toggle(idx);
-            }
-            Msg::ClearCompleted => {
-                self.state.clear_completed();
+            Msg::Stop => {
+                self.state.is_playing = false;
+                self.previous_steps = vec![];
             }
             Msg::Nope => {}
         }
-        self.storage.store(KEY, Json(&self.state.entries));
+        self.storage.store(KEY, Json(&self.state.grid));
         true
     }
 
     fn view(&self) -> Html {
-        info!("rendered!");
+        // info!("rendered!");
         html! {
-            <div class="todomvc-wrapper">
-                <section class="todoapp">
-                    <header class="header">
-                        <h1>{ "todos" }</h1>
-                        { self.view_input() }
-                    </header>
-                    <section class="main">
-                        <input class="toggle-all" type="checkbox" checked=self.state.is_all_completed() onclick=self.link.callback(|_| Msg::ToggleAll) />
-                        <ul class="todo-list">
-                            { for self.state.entries.iter().filter(|e| self.state.filter.fit(e))
-                                .enumerate()
-                                .map(|val| self.view_entry(val)) }
-                        </ul>
-                    </section>
-                    <footer class="footer">
-                        <span class="todo-count">
-                            <strong>{ self.state.total() }</strong>
-                            { " item(s) left" }
-                        </span>
-                        <ul class="filters">
-                            { for Filter::iter().map(|flt| self.view_filter(flt)) }
-                        </ul>
-                        <button class="clear-completed" onclick=self.link.callback(|_| Msg::ClearCompleted)>
-                            { format!("Clear completed ({})", self.state.total_completed()) }
-                        </button>
-                    </footer>
-                </section>
-                <footer class="info">
-                    <p>{ "Double-click to edit a todo" }</p>
-                    <p>{ "Written by " }<a href="https://github.com/DenisKolodin/" target="_blank">{ "Denis Kolodin" }</a></p>
-                    <p>{ "Part of " }<a href="http://todomvc.com/" target="_blank">{ "TodoMVC" }</a></p>
-                </footer>
+            <div class="game-of-death-wrapper">
+                <AppHeader></AppHeader>
+                <GameGrid
+                    cellules={self.state.game_state.cellules.clone()}
+                    cellules_width={self.state.game_state.cellules_width}
+                    cellules_height={self.state.game_state.cellules_height}
+                    onclick=self.link.callback(Msg::GridClicked)
+                ></GameGrid>
+                <button onclick=self.link.callback(|_|  Msg::StepClicked)>{"Step"}</button>
+                <button onclick=self.link.callback(|_|  Msg::RandomSeed)>{"Random Seed"}</button>
+                <button onclick=self.link.callback(|_|  Msg::Start)>{"Start"}</button>
+                <button onclick=self.link.callback(|_|  Msg::Stop)>{"Stop"}</button>
+                <span>{"Modifications: "} {self.state.modification_count}</span>
+                <span>{"Steps: "} {self.state.step_count}</span>
+                <span>{"Active: "} {self.state.active_count}</span>
+                <span>{"previous frame count: "} {self.previous_steps.len()}</span>
             </div>
         }
     }
 }
 
 impl App {
-    fn view_filter(&self, filter: Filter) -> Html {
-        let flt = filter.clone();
-
-        html! {
-            <li>
-                <a class=if self.state.filter == flt { "selected" } else { "not-selected" }
-                   href=&flt
-                   onclick=self.link.callback(move |_| Msg::SetFilter(flt.clone()))>
-                    { filter }
-                </a>
-            </li>
-        }
-    }
-
-    fn view_input(&self) -> Html {
-        html! {
-            // You can use standard Rust comments. One line:
-            // <li></li>
-            <input class="new-todo"
-                   placeholder="What needs to be done?"
-                   value=&self.state.value
-                   oninput=self.link.callback(|e: InputData| Msg::Update(e.value))
-                   onkeypress=self.link.callback(|e: KeyboardEvent| {
-                       if e.key() == "Enter" { Msg::Add } else { Msg::Nope }
-                   }) />
-            /* Or multiline:
-            <ul>
-                <li></li>
-            </ul>
-            */
-        }
-    }
-
-    fn view_entry(&self, (idx, entry): (usize, &Entry)) -> Html {
-        let mut class = "todo".to_string();
-        if entry.editing {
-            class.push_str(" editing");
-        }
-        if entry.completed {
-            class.push_str(" completed");
-        }
-
-        html! {
-            <li class=class>
-                <div class="view">
-                    <input class="toggle" type="checkbox" checked=entry.completed onclick=self.link.callback(move |_| Msg::Toggle(idx)) />
-                    <label ondoubleclick=self.link.callback(move |_| Msg::ToggleEdit(idx))>{ &entry.description }</label>
-                    <button class="destroy" onclick=self.link.callback(move |_| Msg::Remove(idx)) />
-                </div>
-                { self.view_entry_edit_input((&idx, &entry)) }
-            </li>
-        }
-    }
-
-    fn view_entry_edit_input(&self, (idx, entry): (&usize, &Entry)) -> Html {
-        let idx = *idx;
-        if entry.editing {
-            html! {
-                <input class="edit"
-                       type="text"
-                       value=&entry.description
-                       oninput=self.link.callback(move |e: InputData| Msg::UpdateEdit(e.value))
-                       onblur=self.link.callback(move |_| Msg::Edit(idx))
-                       onkeypress=self.link.callback(move |e: KeyboardEvent| {
-                          if e.key() == "Enter" { Msg::Edit(idx) } else { Msg::Nope }
-                       }) />
+    fn set_active_count(&mut self) -> () {
+        let mut active_count = 0;
+        for cellule in self.state.game_state.cellules.iter() {
+            if cellule.life_state == LifeState::Alive {
+                active_count += 1;
             }
-        } else {
-            html! { <input type="hidden" /> }
         }
+        self.state.active_count = active_count;
     }
-}
 
-#[derive(EnumIter, ToString, Clone, PartialEq, Serialize, Deserialize)]
-pub enum Filter {
-    All,
-    Active,
-    Completed,
-}
+    fn game_grids_are_identical(&self, grid_a: Vec<Cellule>, grid_b: Vec<Cellule>) -> bool {
+        let length_a = grid_a.len();
+        let length_b = grid_b.len();
 
-impl<'a> Into<Href> for &'a Filter {
-    fn into(self) -> Href {
-        match *self {
-            Filter::All => "#/".into(),
-            Filter::Active => "#/active".into(),
-            Filter::Completed => "#/completed".into(),
+        // info!("grid_a {:?} {:?}", grid_a.len(), grid_a[1].alive());
+        // info!("grid_b {:?} {:?}", grid_b.len(), grid_b[1].alive());
+
+        if length_a != length_b {
+            warn!("lengths not equal");
+            return false;
         }
+
+        for index in 0..(length_a - 1) {
+            if grid_a[index].life_state != grid_b[index].life_state {
+                return false;
+            }
+        }
+
+        true
     }
-}
 
-impl Filter {
-    fn fit(&self, entry: &Entry) -> bool {
-        match *self {
-            Filter::All => true,
-            Filter::Active => !entry.completed,
-            Filter::Completed => entry.completed,
-        }
+    fn fetch_json(&mut self) -> yew::services::fetch::FetchTask {
+        let callback = self.link.callback(
+            move |response: Response<Json<Result<ResultResponseData, Error>>>| {
+                let (meta, Json(data)) = response.into_parts();
+                info!("META: {:?}, {:?}", meta, data);
+                if meta.status.is_success() {
+                    Msg::HandleSendResultResponse(data)
+                } else {
+                    warn!("HTTP request failure");
+                    Msg::Nope
+                }
+            },
+        );
+
+        let serialized_cellules = self
+            .state
+            .game_state
+            .cellules
+            .iter()
+            .map(|cellule| {
+                if cellule.life_state == LifeState::Dead {
+                    "0".to_owned()
+                } else {
+                    "1".to_owned()
+                }
+            })
+            .collect::<Vec<String>>()
+            .join("");
+
+        let raw_payload = SendResultPayload {
+            modifications: self.state.modifications.clone(),
+            step_count: self.state.step_count,
+            active_count: self.state.active_count,
+            game_state: SerializedGameState {
+                cellules: serialized_cellules,
+                cellules_width: self.state.game_state.cellules_width,
+                cellules_height: self.state.game_state.cellules_height,
+                active: false,
+            },
+        };
+        let payload = Json(&raw_payload);
+        let request = Request::post("http://localhost:3000/prod/submit-result")
+            .header("Content-Type", "application/json")
+            .body(payload)
+            .unwrap();
+        FetchService::new().fetch(request, callback).unwrap()
     }
 }
 
 impl State {
     fn total(&self) -> usize {
-        self.entries.len()
-    }
-
-    fn total_completed(&self) -> usize {
-        self.entries
-            .iter()
-            .filter(|e| Filter::Completed.fit(e))
-            .count()
-    }
-
-    fn is_all_completed(&self) -> bool {
-        let mut filtered_iter = self
-            .entries
-            .iter()
-            .filter(|e| self.filter.fit(e))
-            .peekable();
-
-        if filtered_iter.peek().is_none() {
-            return false;
-        }
-
-        filtered_iter.all(|e| e.completed)
-    }
-
-    fn toggle_all(&mut self, value: bool) {
-        for entry in self.entries.iter_mut() {
-            if self.filter.fit(entry) {
-                entry.completed = value;
-            }
-        }
-    }
-
-    fn clear_completed(&mut self) {
-        let entries = self
-            .entries
-            .drain(..)
-            .filter(|e| Filter::Active.fit(e))
-            .collect();
-        self.entries = entries;
-    }
-
-    fn toggle(&mut self, idx: usize) {
-        let filter = self.filter.clone();
-        let mut entries = self
-            .entries
-            .iter_mut()
-            .filter(|e| filter.fit(e))
-            .collect::<Vec<_>>();
-        let entry = entries.get_mut(idx).unwrap();
-        entry.completed = !entry.completed;
-    }
-
-    fn toggle_edit(&mut self, idx: usize) {
-        let filter = self.filter.clone();
-        let mut entries = self
-            .entries
-            .iter_mut()
-            .filter(|e| filter.fit(e))
-            .collect::<Vec<_>>();
-        let entry = entries.get_mut(idx).unwrap();
-        entry.editing = !entry.editing;
-    }
-
-    fn complete_edit(&mut self, idx: usize, val: String) {
-        let filter = self.filter.clone();
-        let mut entries = self
-            .entries
-            .iter_mut()
-            .filter(|e| filter.fit(e))
-            .collect::<Vec<_>>();
-        let entry = entries.get_mut(idx).unwrap();
-        entry.description = val;
-        entry.editing = !entry.editing;
-    }
-
-    fn remove(&mut self, idx: usize) {
-        let idx = {
-            let filter = self.filter.clone();
-            let entries = self
-                .entries
-                .iter()
-                .enumerate()
-                .filter(|&(_, e)| filter.fit(e))
-                .collect::<Vec<_>>();
-            let &(idx, _) = entries.get(idx).unwrap();
-            idx
-        };
-        self.entries.remove(idx);
+        self.grid.len()
     }
 }
