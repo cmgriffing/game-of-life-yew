@@ -1,15 +1,13 @@
-use crate::app::core::game::{Cellule, LifeState};
+// use crate::app::core::game::{Cellule, LifeState};
+use game_of_life_core::core::game::{Cellule, LifeState};
+
+use crate::utils::colors::*;
+
 #[allow(dead_code)]
 use log::*;
-use serde_derive::{Deserialize, Serialize};
-use std::convert::TryInto;
-use std::iter::Iterator;
-use strum::IntoEnumIterator;
-use strum_macros::{EnumIter, ToString};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
-use web_sys::{CanvasRenderingContext2d, EventTarget, HtmlCanvasElement, HtmlElement};
-use yew::format::Json;
+use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 use yew::prelude::*;
 
 const BASE_CELLULE_SIZE: i32 = 20;
@@ -121,24 +119,44 @@ impl GameGrid {
     let ctx = CanvasRenderingContext2d::from(JsValue::from(
       canvas_element.get_context("2d").unwrap().unwrap(),
     ));
-    ctx.set_fill_style(&JsValue::from_str("gray"));
+    ctx.set_fill_style(&JsValue::from_str("#aaaadd"));
+
+    let gradient_manager = GradientManager::new(
+      Color {
+        red: 246.0,
+        green: 157.0,
+        blue: 60.0,
+      },
+      Color {
+        red: 63.0,
+        green: 135.0,
+        blue: 166.0,
+      },
+    );
 
     for cellule_index in 0..2000 {
       let row_number = cellule_index / self.props.cellules_width;
       let column_number = cellule_index % self.props.cellules_width;
 
-      let x = BASE_CELLULE_SIZE * (column_number as i32);
-      let y = BASE_CELLULE_SIZE * (row_number as i32);
+      let x = (BASE_CELLULE_SIZE as f32) * (column_number as f32);
+      let y = (BASE_CELLULE_SIZE as f32) * (row_number as f32);
 
       if self.props.cellules[cellule_index].life_state == LifeState::Alive {
-        ctx.set_fill_style(&JsValue::from_str("red"));
+        // "rgb()"
+        // let new_color = format!("rgb({}, {}, {})", newRed, newGreen, newBlue);
+
+        let added_indexes = (column_number + row_number) as f32;
+        let progress_percentage = added_indexes / 100.0;
+        let color = gradient_manager.interpolate_colors(progress_percentage);
+        let new_color = format!("rgb({}, {}, {})", color.red, color.green, color.blue);
+        ctx.set_fill_style(&JsValue::from_str(new_color.as_str()));
         ctx.fill_rect(
           x as f64,
           y as f64,
           BASE_CELLULE_SIZE as f64,
           BASE_CELLULE_SIZE as f64,
         );
-        ctx.set_fill_style(&JsValue::from_str("gray"));
+        ctx.set_fill_style(&JsValue::from_str("#aaaadd"));
       } else {
         ctx.fill_rect(
           x as f64,
@@ -164,7 +182,9 @@ extern "C" {
   fn get_payload_later_js(payload_callback: JsValue);
 }
 
+#[allow(dead_code)]
 fn get_payload_later(payload_callback: Callback<String>) {
+  #[allow(unused_variables)]
   let callback =
     Closure::once_into_js(move |payload: String| payload_callback.emit("Math.random()".to_owned()));
   get_payload_later_js(callback);

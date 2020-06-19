@@ -9,8 +9,12 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 anyhow = "1.0.31"
+fmt = "0.1.0"
+game-of-life-core = { path = "../game-of-life-core" }
+js-sys = "0.3.40"
 log = "0.4"
 rand = "0.7.3"
+simplelog = "0.8.0"
 strum = "0.17"
 strum_macros = "0.17"
 serde = "1"
@@ -19,6 +23,7 @@ wasm-bindgen = "0.2.58"
 wasm-logger = "0.2"
 wee_alloc = { version = "0.4.4", optional = true }
 yew = "0.16.2"
+yew-components = "0.1.1"
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3"
@@ -27,10 +32,13 @@ wasm-bindgen-test = "0.3"
 version = "0.3.4"
 features = [
   'CanvasRenderingContext2d',
+  'DateTimeValue',
   'Document',
   'Element',
   'EventTarget',
   'HtmlCanvasElement',
+  'HtmlSelectElement',
+  'InputEvent',
   'KeyboardEvent',
   'Window',
 ]

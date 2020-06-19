@@ -1,6 +1,10 @@
 #![recursion_limit = "512"]
 
+#[macro_use]
+extern crate log;
+
 mod app;
+mod utils;
 
 use wasm_bindgen::prelude::*;
 
