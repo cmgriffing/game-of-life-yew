@@ -1,6 +1,7 @@
 const path = require("path");
 const WasmPackPlugin = require("@wasm-tool/wasm-pack-plugin");
 const CopyWebpackPlugin = require("copy-webpack-plugin");
+const webpack = require("webpack");
 
 const PRODUCTION = "production";
 
@@ -32,6 +33,10 @@ module.exports = (env, argv) => {
         crateDirectory: ".",
         extraArgs: "--no-typescript",
       }),
+      new webpack.EnvironmentPlugin([
+        "API_URL_SUBMIT_RESULT",
+        "API_URL_GET_HIGH_SCORES",
+      ]),
     ],
     watch: argv.mode !== PRODUCTION,
   };

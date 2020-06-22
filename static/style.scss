@@ -1,5 +1,11 @@
 @import "common";
 
+/*
+------------------------------
+Globals
+------------------------------
+*/
+
 input,
 button,
 textarea,
@@ -25,10 +31,34 @@ h1 {
   font-family: "Major Mono Display", monospace;
   text-transform: uppercase;
 }
+
 * {
   font-family: "Major Mono Display", monospace;
   text-transform: lowercase;
+  box-sizing: border-box;
 }
+
+/*
+------------------------------
+Component Imports
+------------------------------
+*/
+@import "./components/new-score-modal";
+
+/*
+------------------------------
+Unstructured App styling
+------------------------------
+*/
+.server-down-wrapper {
+  padding: 32px;
+
+  p {
+    text-transform: none;
+    font-family: auto;
+  }
+}
+
 
 .game-of-death-wrapper {
   height: 100vh;
@@ -36,10 +66,23 @@ h1 {
   flex-direction: column;
   justify-content: center;
   align-items: center;
+  position: relative;
 
   .hacky-spacer {
     height: 110px;
   }
+}
+
+.overlay {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.42);
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 canvas {
@@ -51,6 +94,10 @@ canvas {
 
 button {
   box-shadow: 0px 10px 13px -7px #000000, 5px 5px 15px 5px rgba(0, 0, 0, 0);
+}
+
+.hidden {
+  display: none;
 }
 
 //---------------------------

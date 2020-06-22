@@ -1,0 +1,2 @@
+API_URL_SUBMIT_RESULT=https://7ijizy64q6.execute-api.us-west-2.amazonaws.com/prod/submit-result
+API_URL_GET_HIGH_SCORES=https://e6ys4hc4w5.execute-api.us-west-2.amazonaws.com/prod/get-high-scores

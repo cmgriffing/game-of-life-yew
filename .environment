@@ -1,0 +1,2 @@
+API_URL_SUBMIT_RESULT=http://localhost:3100/prod/submit-result
+API_URL_GET_HIGH_SCORES=http://localhost:3100/prod/get-high-scores

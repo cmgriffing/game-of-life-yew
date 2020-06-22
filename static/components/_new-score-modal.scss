@@ -1,0 +1,44 @@
+@import "../common";
+
+.new-score-modal {
+  width: 420px;
+  max-width: 100%;
+  margin: 0 auto;
+  background: $accent;
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.42);
+  padding: 16px;
+
+  h2 {
+    text-transform: capitalize;
+    text-align: center;
+  }
+
+  p {
+    font-family: auto;
+    text-transform: none;
+  }
+
+  .name-input {
+    width: 100%;
+  }
+
+  .modal-buttons {
+    display: flex;
+    flex-direction: row;
+
+    button {
+      width: 50%;
+
+      &:last-child {
+        margin-right: 0;
+      }
+    }
+
+    .ignore-button {
+      background: #ddd;
+    }
+    .submit-button {
+      background: $success-color;
+    }
+  }
+}

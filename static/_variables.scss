@@ -9,5 +9,8 @@ $start-color: $accent;
 $end-color: rgb(63, 135, 166);
 $warning-color: #f6c03c;
 $error-color: #f65c3c;
+$success-color: #2cb45a;
+
+$main-gradient: linear-gradient(135deg, $start-color, $end-color);
 
 $breakpoint-sm: 600px;
