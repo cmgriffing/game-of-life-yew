@@ -1,0 +1,202 @@
+@import "common";
+
+/*
+------------------------------
+Globals
+------------------------------
+*/
+
+input,
+button,
+textarea,
+select {
+  border-radius: 0;
+}
+
+select {
+  background: #efefef
+    url("data:image/svg+xml;charset=utf-8,%3C?xml version='1.0' encoding='utf-8'?%3E %3Csvg version='1.1' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' height='62.5' width='116.9' fill='%23161f27'%3E %3Cpath d='M115.3,1.6 C113.7,0 111.1,0 109.5,1.6 L58.5,52.7 L7.4,1.6 C5.8,0 3.2,0 1.6,1.6 C0,3.2 0,5.8 1.6,7.4 L55.5,61.3 C56.3,62.1 57.3,62.5 58.4,62.5 C59.4,62.5 60.5,62.1 61.3,61.3 L115.2,7.4 C116.9,5.8 116.9,3.2 115.3,1.6Z'/%3E %3C/svg%3E")
+    calc(100% - 12px) 50% / 12px no-repeat;
+}
+
+body,
+html {
+  background: $accent;
+  margin: 0;
+  padding: 0;
+  max-width: none;
+}
+
+h1 {
+  font-family: "Major Mono Display", monospace;
+  text-transform: uppercase;
+}
+
+* {
+  font-family: "Major Mono Display", monospace;
+  text-transform: lowercase;
+  box-sizing: border-box;
+}
+
+/*
+------------------------------
+Component Imports
+------------------------------
+*/
+@import "./components/new-score-modal";
+
+/*
+------------------------------
+Unstructured App styling
+------------------------------
+*/
+.server-down-wrapper {
+  padding: 32px;
+
+  p {
+    text-transform: none;
+    font-family: auto;
+  }
+}
+
+
+.game-of-death-wrapper {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+
+  .hacky-spacer {
+    height: 110px;
+  }
+}
+
+.overlay {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.42);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+canvas {
+  width: 100vw;
+  max-width: 100%;
+  height: auto;
+  background: #aaaadd;
+}
+
+button {
+  box-shadow: 0px 10px 13px -7px #000000, 5px 5px 15px 5px rgba(0, 0, 0, 0);
+}
+
+.hidden {
+  display: none;
+}
+
+//---------------------------
+
+.main-header {
+  background: rgb(246, 157, 60);
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: center;
+  padding: 6px 0;
+  text-align: center;
+  flex-wrap: wrap;
+  width: 100%;
+
+  @media (min-width: $breakpoint-sm) {
+    flex-wrap: nowrap;
+  }
+
+  .controls {
+    display: flex;
+    width: 100%;
+    justify-content: center;
+
+    select {
+      max-width: 250px;
+      width: 100%;
+    }
+  }
+}
+
+.reset-button {
+  margin-right: 0;
+  background: $error-color;
+  color: #fff;
+  opacity: 0.6;
+  transition: opacity 300ms;
+
+  &:hover {
+    opacity: 1;
+    background: $error-color;
+    color: #fff;
+  }
+}
+
+.metrics {
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  display: flex;
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  margin: 0 10px;
+
+  .metric-label {
+    font-size: 16px;
+    font-weight: 300;
+  }
+
+  .metric-value {
+    font-size: 32px;
+    font-weight: 700;
+    margin-top: -10px;
+  }
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.start-wrapper {
+  position: fixed;
+  bottom: 20px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  transition: transform 300ms;
+
+  &.started {
+    transform: translateY(200px);
+  }
+}
+
+.start-button {
+  background: $end-color;
+  color: #fff;
+  width: 80%;
+  opacity: 0.8;
+  transition: opacity 300ms;
+
+  &:hover {
+    background: $end-color;
+    opacity: 1;
+    color: #fff;
+  }
+}
+
+//-----------------------------

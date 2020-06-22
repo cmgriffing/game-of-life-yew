@@ -1,0 +1,16 @@
+$background-color: #f5f5f5;
+$text-color: #333333;
+
+$primary-color: #0000dd;
+$secondary-color: #aaaadd;
+
+$accent: rgb(246, 157, 60);
+$start-color: $accent;
+$end-color: rgb(63, 135, 166);
+$warning-color: #f6c03c;
+$error-color: #f65c3c;
+$success-color: #2cb45a;
+
+$main-gradient: linear-gradient(135deg, $start-color, $end-color);
+
+$breakpoint-sm: 600px;
