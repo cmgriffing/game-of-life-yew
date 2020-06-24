@@ -219,8 +219,6 @@ impl Component for App {
 
                     self.state.modification_count += 1;
 
-                    // info!("{:?} {:?} {:?}", column_number, row_number, index);
-
                     self.state.game_state.toggle_cellule(index as usize);
                 }
             }
@@ -236,12 +234,13 @@ impl Component for App {
                 info!("send result response {:?}", send_result_response)
             }
             Msg::HandleSeedChange(seed) => {
+                self.state.is_started = false;
+                self.state.is_playing = false;
                 self.state.modification_count = 0;
                 self.state.step_count = 0;
 
                 self.state.game_state.set_cellules(seed.cellules);
 
-                self.state.is_started = false;
                 self.set_active_count();
                 self.history.clear_previous_steps();
                 self.state.modifications = vec![];
@@ -350,7 +349,7 @@ impl Component for App {
 
                     <div class="hacky-spacer"></div>
 
-                    <div hidden={self.state.has_no_network} style={game_styles}>
+                    <div class="start-wrapper" hidden={self.state.has_no_network || self.state.is_started } style={game_styles}>
                         <button class="start-button" onclick=self.link.callback(|_|  Msg::Start)>{"Start"}</button>
                     </div>
 

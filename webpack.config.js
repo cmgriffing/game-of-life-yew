@@ -16,6 +16,7 @@ module.exports = (env, argv) => {
     entry: "./bootstrap.js",
     output: {
       path: distPath,
+      publicPath: "/game-of-life-yew/",
       filename: "todomvc.js",
       webassemblyModuleFilename: "todomvc.wasm",
     },

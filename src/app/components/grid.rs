@@ -56,8 +56,11 @@ impl Component for GameGrid {
       Msg::Click(mouse_event) => {
         let canvas_element = self.canvas_ref.cast::<HtmlCanvasElement>().unwrap();
 
-        let translation_ratio = ((BASE_CELLULE_SIZE as f32) * self.props.cellules_width as f32)
+        let translation_ratio_x = ((BASE_CELLULE_SIZE as f32) * self.props.cellules_width as f32)
           / canvas_element.client_width() as f32;
+
+        let translation_ratio_y = ((BASE_CELLULE_SIZE as f32) * self.props.cellules_height as f32)
+            / canvas_element.client_height() as f32;
 
         self.render_canvas(canvas_element);
 
@@ -68,9 +71,9 @@ impl Component for GameGrid {
         );
 
         let column_number =
-          ((mouse_event.offset_x() as f32) * translation_ratio / BASE_CELLULE_SIZE as f32) as i32;
+          ((mouse_event.offset_x() as f32) * translation_ratio_x / BASE_CELLULE_SIZE as f32) as i32;
         let row_number =
-          ((mouse_event.offset_y() as f32) * translation_ratio / BASE_CELLULE_SIZE as f32) as i32;
+          ((mouse_event.offset_y() as f32) * translation_ratio_y / BASE_CELLULE_SIZE as f32) as i32;
 
         info!(
           " click happened in grid {:?} {:?}",
