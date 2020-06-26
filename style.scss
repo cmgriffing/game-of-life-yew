@@ -173,6 +173,16 @@ button {
   flex: 1 1 auto;
 }
 
+.name-input-wrapper label {
+  font-family: auto;
+  font-weight: bold;
+  text-transform: none;
+
+  input {
+    text-transform: uppercase;
+  }
+}
+
 .start-wrapper {
   position: fixed;
   bottom: 20px;
