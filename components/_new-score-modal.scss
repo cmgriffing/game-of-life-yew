@@ -26,7 +26,8 @@
     display: flex;
     flex-direction: row;
 
-    button {
+    input[type="button"],
+    input[type="submit"] {
       width: 50%;
 
       &:last-child {
