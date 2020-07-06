@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <title>Cellule Life</title>
-    <base href="/game-of-life-yew/">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <base href="/game-of-life-yew/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/gh/kognise/water.css@latest/dist/light.min.css"
@@ -16,5 +16,14 @@
   </head>
   <body>
     <script src="cellulelife.js"></script>
+    <script>
+      document.addEventListener("keyup", (event) => {
+        const ignoreButton = document.querySelector(".button.ignore-button");
+
+        if (ignoreButton && event.keyCode === 27) {
+          ignoreButton.click();
+        }
+      });
+    </script>
   </body>
 </html>
