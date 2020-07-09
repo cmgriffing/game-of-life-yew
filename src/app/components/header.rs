@@ -12,6 +12,7 @@ use game_of_life_core::core::seeds::seeds::{seed_middle_line_starter, Seed};
 pub enum Msg {
     Reset,
     SeedChanged(usize),
+    UpdateRate(String)
 }
 
 #[derive(Properties, Clone, PartialEq)]
@@ -32,6 +33,8 @@ pub struct Props {
     pub on_reset: Callback<()>,
     #[prop_or_default]
     pub on_seed_change: Callback<Seed>,
+    #[prop_or_default]
+    pub on_rate_change: Callback<f64>,
 
     #[prop_or_default]
     pub seed_options: Vec<Seed>,
@@ -41,6 +44,7 @@ pub struct AppHeader {
     props: Props,
     link: ComponentLink<Self>,
     current_seed: Seed,
+    rate: f64
 }
 
 impl Component for AppHeader {
@@ -55,6 +59,7 @@ impl Component for AppHeader {
                 cellules: vec![],
                 label: "Loading".to_owned(),
             },
+            rate: 60.0
         }
     }
 
@@ -71,6 +76,12 @@ impl Component for AppHeader {
                 let seed_option = self.props.seed_options[seed_option_index].clone();
                 self.current_seed = seed_option.clone();
                 self.props.on_seed_change.emit(seed_option);
+            }
+            Msg::UpdateRate(rate) => {
+                info!("rate {:?}", rate);
+                let rate_f64 = rate.parse::<f64>().unwrap();
+                self.props.on_rate_change.emit(rate_f64);
+                self.rate = rate_f64;
             }
         }
 
@@ -89,7 +100,7 @@ impl Component for AppHeader {
     fn view(&self) -> Html {
         html! {
             <>
-                <h1>{ "Life of Game of Life" }</h1>
+                <h1>{ "Cellule Life" }</h1>
                 <header class="main-header">
                     <div class="controls">
                         <select onchange=self.link.callback(|event: ChangeData| match event {
@@ -106,6 +117,25 @@ impl Component for AppHeader {
                         </select>
 
                         <button class="reset-button" onclick=self.link.callback(|_| Msg::Reset)>{"Reset"}</button>
+                    </div>
+
+                    <div class="spacer"></div>
+
+                    <div class="slider-section">
+                        <label labelFor="rate">{"Rate: "} {self.rate}{"fps"}</label>
+                        <div class="slider-component">
+                            <div class="slider-label-start">{"10"}</div>
+                            <input
+                                type="range"
+                                name="rate"
+                                id="rate"
+                                min="10"
+                                max="120"
+                                step="10"
+                                oninput=self.link.callback(|event: InputData| Msg::UpdateRate(event.value))
+                            />
+                            <div class="slider-label-end">{"120"}</div>
+                        </div>
                     </div>
 
                     <div class="spacer"></div>

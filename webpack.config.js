@@ -17,8 +17,8 @@ module.exports = (env, argv) => {
     output: {
       path: distPath,
       publicPath: "/game-of-life-yew/",
-      filename: "todomvc.js",
-      webassemblyModuleFilename: "todomvc.wasm",
+      filename: "cellulelife.js",
+      webassemblyModuleFilename: "cellulelife.wasm",
     },
     module: {
       rules: [

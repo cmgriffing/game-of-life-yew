@@ -59,7 +59,6 @@ Unstructured App styling
   }
 }
 
-
 .game-of-death-wrapper {
   height: 100vh;
   display: flex;
@@ -75,7 +74,7 @@ Unstructured App styling
 }
 
 .overlay {
-  position: absolute;
+  position: fixed;
   top: 0;
   bottom: 0;
   left: 0;
@@ -93,7 +92,9 @@ canvas {
   background: #aaaadd;
 }
 
-button {
+button,
+input[type="button"],
+input[type="submit"] {
   box-shadow: 0px 10px 13px -7px #000000, 5px 5px 15px 5px rgba(0, 0, 0, 0);
 }
 
@@ -173,6 +174,16 @@ button {
   flex: 1 1 auto;
 }
 
+.name-input-wrapper label {
+  font-family: auto;
+  font-weight: bold;
+  text-transform: none;
+
+  input {
+    text-transform: uppercase;
+  }
+}
+
 .start-wrapper {
   position: fixed;
   bottom: 20px;
@@ -201,3 +212,7 @@ button {
 }
 
 //-----------------------------
+
+.slider-component {
+  display: flex;
+}

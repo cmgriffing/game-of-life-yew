@@ -4,7 +4,7 @@ use anyhow::Error;
 use log::*;
 use serde_derive::{Deserialize, Serialize};
 use wasm_bindgen::{closure::Closure, convert::IntoWasmAbi, prelude::wasm_bindgen, JsValue};
-use yew::format::{ Json, Nothing };
+use yew::format::{Json, Nothing};
 use yew::prelude::*;
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use yew::services::storage::{Area, StorageService};
@@ -54,7 +54,6 @@ pub struct State {
     game_state: GameState,
     is_playing: bool,
     is_started: bool,
-    modification_count: i32,
     step_count: i32,
     active_count: i32,
     modifications: Vec<GridModification>,
@@ -62,7 +61,9 @@ pub struct State {
     has_life_high_score: bool,
     has_death_high_score: bool,
     user_name: String,
-    has_no_network: bool
+    has_no_network: bool,
+    user_name_is_valid: bool,
+    rate: f64,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -82,9 +83,12 @@ pub enum Msg {
     Stop,
     Render,
     HandleSeedChange(Seed),
-    DismissScoreModal(MouseEvent),
+    DismissScoreModal,
+    DismissScoreModalClick(MouseEvent),
     SubmitScore(Event),
     ChangeUserName(String),
+    HandleRender,
+    HandleRateChange(f64),
     Nope,
 }
 
@@ -165,7 +169,6 @@ impl Component for App {
             game_state,
             is_playing: false,
             is_started: false,
-            modification_count: 0,
             step_count: 0,
             active_count: 0,
             modifications: vec![],
@@ -173,7 +176,9 @@ impl Component for App {
             has_life_high_score: false,
             has_death_high_score: false,
             user_name: "".to_string(),
-            has_no_network: false
+            has_no_network: false,
+            user_name_is_valid: false,
+            rate: 60.0,
         };
 
         App {
@@ -186,7 +191,7 @@ impl Component for App {
             history,
             last_render_timestamp: js_sys::Date::now(), //Instant::now(),
             seed_options,
-            env_vars: App::get_env_vars()
+            env_vars: App::get_env_vars(),
         }
     }
 
@@ -196,9 +201,7 @@ impl Component for App {
             self.update(Msg::Render);
         }
 
-        if self.last_render_timestamp + 15.0 < js_sys::Date::now() {
-            self.render_next_frame();
-        }
+        self.render_next_frame();
     }
 
     fn change(&mut self, _props: Self::Properties) -> ShouldRender {
@@ -212,12 +215,26 @@ impl Component for App {
                     let index =
                         row_number * (self.state.game_state.cellules_width as i32) + column_number;
 
-                    self.state.modifications.push(GridModification {
-                        grid_index: index,
-                        step_index: self.state.step_count,
-                    });
-
-                    self.state.modification_count += 1;
+                    match self
+                        .state
+                        .modifications
+                        .iter()
+                        .find(|&modification| modification.grid_index == index)
+                    {
+                        Some(_) => {
+                            self.state.modifications = self
+                                .state
+                                .modifications
+                                .iter()
+                                .cloned()
+                                .filter(|modification| modification.grid_index != index)
+                                .collect::<Vec<GridModification>>()
+                        }
+                        _ => self.state.modifications.push(GridModification {
+                            grid_index: index,
+                            step_index: self.state.step_count,
+                        }),
+                    }
 
                     self.state.game_state.toggle_cellule(index as usize);
                 }
@@ -236,9 +253,9 @@ impl Component for App {
             Msg::HandleSeedChange(seed) => {
                 self.state.is_started = false;
                 self.state.is_playing = false;
-                self.state.modification_count = 0;
                 self.state.step_count = 0;
 
+                self.state.current_seed = seed.clone();
                 self.state.game_state.set_cellules(seed.cellules);
 
                 self.set_active_count();
@@ -285,11 +302,15 @@ impl Component for App {
                 self.state.is_playing = false;
                 self.history.clear_previous_steps();
             }
-            Msg::DismissScoreModal(event) => {
-                info!("Dismissing Modal");
-                event.prevent_default();
+            Msg::DismissScoreModal => {
                 self.state.has_life_high_score = false;
                 self.state.has_death_high_score = false;
+                self.update(Msg::HandleSeedChange(self.state.current_seed.clone()));
+            }
+            Msg::DismissScoreModalClick(event) => {
+                info!("Dismissing Modal");
+                event.prevent_default();
+                self.update(Msg::DismissScoreModal);
             }
             Msg::SubmitScore(event) => {
                 info!("Submitting Score");
@@ -299,10 +320,27 @@ impl Component for App {
                 info!("submitted: {:?}", self.state.user_name);
                 // make fetch request
                 self.send_result_fetch_task = Some(self.post_results());
+
+                self.update(Msg::HandleSeedChange(self.state.current_seed.clone()));
             }
             Msg::ChangeUserName(user_name) => {
-                info!("{:?}", user_name);
+                // info!("{:?}", user_name);
                 self.state.user_name = user_name;
+                self.state.user_name_is_valid = !containsProfanity(&self.state.user_name);
+            }
+            Msg::HandleRender => {
+                let now = js_sys::Date::now();
+                let frame_time = 1000.0 / self.state.rate;
+                if self.last_render_timestamp + frame_time < now {
+                    self.last_render_timestamp = now;
+                    self.update(Msg::StepGame);
+                } else {
+                    self.update(Msg::Nope);
+                }
+            }
+            Msg::HandleRateChange(rate) => {
+                self.state.rate = rate;
+                info!("handling rate change: {:?}", rate);
             }
             Msg::Nope => {}
         }
@@ -311,7 +349,6 @@ impl Component for App {
     }
 
     fn view(&self) -> Html {
-
         let error_styles = if self.state.has_no_network == true {
             ""
         } else {
@@ -324,6 +361,7 @@ impl Component for App {
             ""
         };
 
+        let modification_count = self.state.modifications.len() as i32;
 
         html! {
             <>
@@ -336,9 +374,10 @@ impl Component for App {
                     <AppHeader
                         step_count={self.state.step_count}
                         active_count={self.state.active_count}
-                        modification_count={self.state.modification_count}
+                        modification_count={modification_count}
                         seed_options={self.seed_options.clone()}
                         on_seed_change=self.link.callback(|seed| Msg::HandleSeedChange(seed))
+                        on_rate_change=self.link.callback(|rate| Msg::HandleRateChange(rate))
                     ></AppHeader>
                     <GameGrid
                         cellules={self.state.game_state.cellules.clone()}
@@ -353,17 +392,35 @@ impl Component for App {
                         <button class="start-button" onclick=self.link.callback(|_|  Msg::Start)>{"Start"}</button>
                     </div>
 
-                    <div class=self.life_score_classes()>
-                        <div class="new-score-modal">
+                    <div class=self.life_score_classes() onclick=self.link.callback(|event: MouseEvent|  Msg::DismissScoreModalClick(event))>
+                        <div class="new-score-modal"
+                            onclick=self.link.callback(|event: MouseEvent|  {
+                                event.stop_propagation();
+                                Msg::Nope
+                            })
+                        >
                             <form onsubmit=self.link.callback(|event: Event|  Msg::SubmitScore(event))>
                                 <h2>{"New Life Score"}</h2>
                                 <p>{"Well, maybe. We need to verify all of the recently submitted results to know for certain."}</p>
-                                <div>
-                                    <input placeholder="Enter Name" class="name-input" oninput=self.link.callback(|event: InputData| Msg::ChangeUserName(event.value)) />
+                                <div class="name-input-wrapper">
+                                    <label>{"Enter Name (4 chars max.)"}
+                                    <input placeholder="ABCD"
+                                    class="name-input" oninput=self.link.callback(|event: InputData| Msg::ChangeUserName(event.value))
+                                        maxlength="4"
+                                    />
+                                    </label>
                                 </div>
                                 <div class="modal-buttons">
-                                    <button type="button" class="ignore-button" onclick=self.link.callback(|event: MouseEvent|  Msg::DismissScoreModal(event))>{"Ignore"}</button>
-                                    <button type="submit" class="submit-button">{"Submit"}</button>
+                                    <input type={"button" }
+                                        value={"Ignore"}
+                                        class="button ignore-button" onclick=self.link.callback(|event: MouseEvent|  Msg::DismissScoreModalClick(event))
+                                    />
+                                    <input
+                                        type="submit"
+                                        class="button submit-button"
+                                        disabled={!self.state.user_name_is_valid}
+                                        value={"Submit"}
+                                    />
                                 </div>
                             </form>
                         </div>
@@ -414,7 +471,6 @@ impl App {
     }
 
     fn fetch_scores(&mut self) -> yew::services::fetch::FetchTask {
-
         let callback = self.link.callback(
             move |response: Response<Json<Result<ResultResponseData, Error>>>| {
                 let (meta, Json(data)) = response.into_parts();
@@ -428,7 +484,6 @@ impl App {
                 }
             },
         );
-
 
         let submit_result_url = self.env_vars.API_URL_GET_HIGH_SCORES.clone();
         let request = Request::get(submit_result_url)
@@ -524,7 +579,9 @@ impl App {
     }
 
     fn render_next_frame(&mut self) {
-        let render_frame = self.link.callback(|_| Msg::StepGame);
+        // info!("now: {:?}", now);
+
+        let render_frame = self.link.callback(|_| Msg::HandleRender);
         let handle = RenderService::new().request_animation_frame(render_frame);
         self.render_loop = Some(Box::new(handle));
     }
@@ -535,4 +592,10 @@ impl State {
     fn total(&self) -> usize {
         self.grid.len()
     }
+}
+
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(js_namespace = filter)]
+    fn containsProfanity(s: &str) -> bool;
 }
