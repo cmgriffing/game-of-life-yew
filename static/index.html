@@ -13,9 +13,50 @@
       href="https://fonts.googleapis.com/css2?family=Major+Mono+Display&display=swap"
       rel="stylesheet"
     />
-  </head>
-  <body>
-    <script src="cellulelife.js"></script>
+
+    <script>
+      // localStorage.setItem('maxfps', 60);
+      function detectTiming() {
+        return new Promise((resolve, reject) => {
+          let mostRecentTimestamp = Date.now();
+          const timings = [];
+          function _detectTiming() {
+            const now = Date.now();
+            const timing = now - mostRecentTimestamp;
+
+            timings.push(timing);
+
+            mostRecentTimestamp = now;
+
+            if (timings.length > 36) {
+              // Remove first 3 values as invalid
+              timings.shift();
+              timings.shift();
+              timings.shift();
+              const sum = timings.reduce((acc, value, array) => {
+                return (acc += value);
+              }, 0);
+              const avg = sum / timings.length;
+              const fps = 1000 / avg;
+              resolve(Math.round(fps / 10) * 10);
+            } else {
+              requestAnimationFrame(_detectTiming);
+            }
+          }
+          _detectTiming();
+        });
+      }
+
+      detectTiming()
+        .then((fps) => {
+          console.log({ fps });
+          localStorage.setItem("maxfps", fps);
+        })
+        .catch((e) => {
+          console.log({ e });
+        });
+    </script>
+
     <script>
       document.addEventListener("keyup", (event) => {
         const ignoreButton = document.querySelector(".button.ignore-button");
@@ -25,5 +66,8 @@
         }
       });
     </script>
+  </head>
+  <body>
+    <script src="cellulelife.js"></script>
   </body>
 </html>
