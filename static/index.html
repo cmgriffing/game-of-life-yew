@@ -28,8 +28,11 @@
 
             mostRecentTimestamp = now;
 
-            if (timings.length > 36) {
-              // Remove first 3 values as invalid
+            if (timings.length > 66) {
+              // Remove first 6 values as invalid
+              timings.shift();
+              timings.shift();
+              timings.shift();
               timings.shift();
               timings.shift();
               timings.shift();
