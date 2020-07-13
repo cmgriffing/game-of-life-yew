@@ -12,6 +12,7 @@ use yew::services::{RenderService, Task};
 
 use crate::app::components::grid::GameGrid;
 use crate::app::components::header::AppHeader;
+use crate::app::components::fps::FpsDetector;
 
 // use crate::app::core::game::{Cellule, GameState, LifeState};
 // use crate::app::core::seeds::{seed_middle_line_starter, seed_pentadecathlon};
@@ -40,6 +41,7 @@ pub struct App {
     last_render_timestamp: f64,
     seed_options: Vec<Seed>,
     env_vars: EnvVars,
+    max_fps: i64,
 }
 
 #[derive(Copy, Clone, Serialize, Deserialize, Debug)]
@@ -89,6 +91,7 @@ pub enum Msg {
     ChangeUserName(String),
     HandleRender,
     HandleRateChange(f64),
+    HandleFpsDetection(i64),
     Nope,
 }
 
@@ -178,7 +181,7 @@ impl Component for App {
             user_name: "".to_string(),
             has_no_network: false,
             user_name_is_valid: false,
-            rate: 60.0,
+            rate: 60.0
         };
 
         App {
@@ -192,6 +195,7 @@ impl Component for App {
             last_render_timestamp: js_sys::Date::now(), //Instant::now(),
             seed_options,
             env_vars: App::get_env_vars(),
+            max_fps: 60
         }
     }
 
@@ -338,6 +342,10 @@ impl Component for App {
                     self.update(Msg::Nope);
                 }
             }
+            Msg::HandleFpsDetection(fps) => {
+                info!("handling max fps {:?}", fps);
+                self.max_fps = fps;
+            }
             Msg::HandleRateChange(rate) => {
                 self.state.rate = rate;
                 info!("handling rate change: {:?}", rate);
@@ -378,6 +386,7 @@ impl Component for App {
                         seed_options={self.seed_options.clone()}
                         on_seed_change=self.link.callback(|seed| Msg::HandleSeedChange(seed))
                         on_rate_change=self.link.callback(|rate| Msg::HandleRateChange(rate))
+                        max_fps={self.max_fps}
                     ></AppHeader>
                     <GameGrid
                         cellules={self.state.game_state.cellules.clone()}
@@ -430,6 +439,8 @@ impl Component for App {
                     </div>
 
                 </div>
+                // WTF: why is this not working
+                <FpsDetector oncomplete=self.link.callback(|fps| Msg::HandleFpsDetection(fps))></FpsDetector>
             </>
         }
     }

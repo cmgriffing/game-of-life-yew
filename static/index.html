@@ -28,14 +28,12 @@
 
             mostRecentTimestamp = now;
 
-            if (timings.length > 66) {
+            const maxIterations = 126;
+            if (timings.length > maxIterations) {
               // Remove first 6 values as invalid
-              timings.shift();
-              timings.shift();
-              timings.shift();
-              timings.shift();
-              timings.shift();
-              timings.shift();
+              for (let i = 0; i < maxIterations / 10; i++) {
+                timings.shift();
+              }
               const sum = timings.reduce((acc, value, array) => {
                 return (acc += value);
               }, 0);

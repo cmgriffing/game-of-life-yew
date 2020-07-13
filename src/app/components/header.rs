@@ -1,15 +1,11 @@
 #[allow(dead_code)]
 use log::*;
-use web_sys::{EventTarget, HtmlSelectElement, InputEvent};
-use yew::format::{Json, Nothing};
+use yew::format::{Json};
 use yew::prelude::*;
-use yew_components::Select;
 use yew::services::storage::{ Area,StorageService };
 
-use game_of_life_core::core::game::{Cellule, GameState, LifeState};
-use game_of_life_core::core::history::History;
-use game_of_life_core::core::seeds::seeds::{seed_middle_line_starter, Seed};
-use wasm_bindgen::JsCast;
+use game_of_life_core::core::seeds::seeds::Seed;
+use crate::app::components::fps::FpsDetector;
 
 #[derive(Clone, PartialEq)]
 pub enum Msg {
@@ -41,6 +37,9 @@ pub struct Props {
 
     #[prop_or_default]
     pub seed_options: Vec<Seed>,
+
+    #[prop_or_default]
+    pub max_fps: i64,
 }
 
 pub struct AppHeader {
@@ -48,7 +47,7 @@ pub struct AppHeader {
     link: ComponentLink<Self>,
     current_seed: Seed,
     rate: f64,
-    max_fps: f64,
+    created_timestamp: f64
 }
 
 impl Component for AppHeader {
@@ -56,17 +55,6 @@ impl Component for AppHeader {
     type Properties = Props;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-
-        let storage = StorageService::new(Area::Local).expect("storage was disabled by the user");
-        let max_fps = {
-            if let Json(Ok(restored_max_fps)) = storage.restore("maxfps") {
-                info!("restored {:?}", restored_max_fps);
-                restored_max_fps
-            } else {
-                60 as f64
-            }
-        };
-
         Self {
             props,
             link,
@@ -74,8 +62,8 @@ impl Component for AppHeader {
                 cellules: vec![],
                 label: "Loading".to_owned(),
             },
-            rate: std::cmp::min(60.0 as i64, max_fps as i64) as f64,
-            max_fps
+            rate: 60.0,
+            created_timestamp: js_sys::Date::now()
         }
     }
 
@@ -111,17 +99,10 @@ impl Component for AppHeader {
             props.on_seed_change.emit(props.seed_options[0].clone());
         }
 
-
-        let storage = StorageService::new(Area::Local).expect("storage was disabled by the user");
-        let max_fps = {
-            if let Json(Ok(restored_max_fps)) = storage.restore("maxfps") {
-                info!("restored {:?}", restored_max_fps);
-                restored_max_fps
-            } else {
-                60 as f64
-            }
-        };
-        self.max_fps = max_fps;
+        if self.rate > self.props.max_fps as f64 {
+            self.rate = self.props.max_fps as f64;
+            self.props.on_rate_change.emit(self.rate);
+        }
 
         true
     }
@@ -159,11 +140,11 @@ impl Component for AppHeader {
                                 name="rate"
                                 id="rate"
                                 min="10"
-                                max={self.max_fps}
+                                max={self.props.max_fps}
                                 step="10"
                                 oninput=self.link.callback(|event: InputData| Msg::UpdateRate(event.value))
                             />
-                            <div class="slider-label-end">{self.max_fps}</div>
+                            <div class="slider-label-end">{self.props.max_fps}</div>
                         </div>
                     </div>
 

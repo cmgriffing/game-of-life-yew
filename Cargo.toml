@@ -13,6 +13,7 @@ fmt = "0.1.0"
 game-of-life-core = { path = "../game-of-life-core" }
 js-sys = "0.3.40"
 log = "0.4"
+libmath = "0.2.1"
 rand = "0.7.3"
 simplelog = "0.8.0"
 strum = "0.17"

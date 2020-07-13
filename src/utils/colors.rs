@@ -39,29 +39,6 @@ impl GradientManager {
     let green = self.start_color.green - green_delta;
     let blue = self.start_color.blue - blue_delta;
 
-    // info!("progress_percentage {:?}", progress_percentage);
-    // info!(
-    //   "START:      red {:?}  green {:?} blue {:?}",
-    //   self.start_color.red, self.start_color.green, self.start_color.blue
-    // );
-
-    // info!(
-    //   "END:        red {:?}  green {:?} blue {:?}",
-    //   self.end_color.red, self.end_color.green, self.end_color.blue
-    // );
-    // info!(
-    //   "DIFFS:      red {:?}  green {:?} blue {:?}",
-    //   red_diff, green_diff, blue_diff
-    // );
-    // info!(
-    //   "DELTAS:     red {:?}  green {:?} blue {:?}",
-    //   red_delta, green_delta, blue_delta
-    // );
-    // info!(
-    //   "NEW COLORS: red {:?}  green {:?} blue {:?}",
-    //   red, green, blue
-    // );
-
     Color { red, green, blue }
   }
 }
