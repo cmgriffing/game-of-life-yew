@@ -9,10 +9,12 @@ use yew::prelude::*;
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use yew::services::storage::{Area, StorageService};
 use yew::services::{RenderService, Task};
+use yew::virtual_dom::vlist::VList;
+use yew::virtual_dom::vnode::VNode;
 
+use crate::app::components::fps::FpsDetector;
 use crate::app::components::grid::GameGrid;
 use crate::app::components::header::AppHeader;
-use crate::app::components::fps::FpsDetector;
 
 // use crate::app::core::game::{Cellule, GameState, LifeState};
 // use crate::app::core::seeds::{seed_middle_line_starter, seed_pentadecathlon};
@@ -42,6 +44,7 @@ pub struct App {
     seed_options: Vec<Seed>,
     env_vars: EnvVars,
     max_fps: i64,
+    previous_scores: Vec<GetScoresResponseDataItem>,
 }
 
 #[derive(Copy, Clone, Serialize, Deserialize, Debug)]
@@ -77,7 +80,7 @@ struct Pixel {
 pub enum Msg {
     GridClicked((i32, i32)),
     HandleSendResultResponse(Result<ResultResponseData, Error>),
-    HandleGetScoresResponse(Result<ResultResponseData, Error>),
+    HandleGetScoresResponse(Result<GetScoresResponseData, Error>),
     HandleGetScoresError,
     SendResult,
     Start,
@@ -130,7 +133,23 @@ pub struct SendResultPayload {
     user_name: String,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GetScoresResponseDataItem {
+    game_state: SerializedGameState,
+    step_count: i32,
+    active_count: i32,
+    modifications: Vec<GridModification>,
+    seed_label: String,
+    user_name: String,
+    _id: String,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
+pub struct GetScoresResponseData {
+    scores: Vec<GetScoresResponseDataItem>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SerializedGameState {
     cellules: String,
     pub active: bool,
@@ -181,7 +200,7 @@ impl Component for App {
             user_name: "".to_string(),
             has_no_network: false,
             user_name_is_valid: false,
-            rate: 60.0
+            rate: 60.0,
         };
 
         App {
@@ -195,7 +214,8 @@ impl Component for App {
             last_render_timestamp: js_sys::Date::now(), //Instant::now(),
             seed_options,
             env_vars: App::get_env_vars(),
-            max_fps: 60
+            max_fps: 60,
+            previous_scores: vec![],
         }
     }
 
@@ -245,6 +265,9 @@ impl Component for App {
             }
             Msg::HandleGetScoresResponse(get_scores_response) => {
                 info!("get scores response {:?}", get_scores_response);
+
+                self.previous_scores = get_scores_response.unwrap().scores;
+
                 self.state.has_no_network = false;
             }
             Msg::HandleGetScoresError => {
@@ -288,7 +311,8 @@ impl Component for App {
 
                     if in_endless_loop == true || self.state.step_count > 4000 {
                         // temp
-                        self.state.has_life_high_score = true;
+                        self.state.has_life_high_score = self.check_life_score();
+                        self.state.has_death_high_score = self.check_death_score();
 
                         self.state.is_playing = false;
                         self.history.clear_previous_steps();
@@ -371,6 +395,17 @@ impl Component for App {
 
         let modification_count = self.state.modifications.len() as i32;
 
+        let has_high_score = self.state.has_life_high_score || self.state.has_death_high_score;
+
+        let has_only_life_high_score =
+            self.state.has_life_high_score && !self.state.has_death_high_score;
+
+        let has_only_death_high_score =
+            !self.state.has_life_high_score && self.state.has_death_high_score;
+
+        let has_both_high_scores =
+            self.state.has_life_high_score && self.state.has_death_high_score;
+
         html! {
             <>
                 <div class="game-of-death-wrapper server-down-wrapper" style={error_styles}>
@@ -401,41 +436,104 @@ impl Component for App {
                         <button class="start-button" onclick=self.link.callback(|_|  Msg::Start)>{"Start"}</button>
                     </div>
 
-                    <div class=self.life_score_classes() onclick=self.link.callback(|event: MouseEvent|  Msg::DismissScoreModalClick(event))>
-                        <div class="new-score-modal"
+                    <div class=self.modal_classes() onclick=self.link.callback(|event: MouseEvent|  Msg::DismissScoreModalClick(event))>
+                        <div
+                            class="new-score-modal"
                             onclick=self.link.callback(|event: MouseEvent|  {
                                 event.stop_propagation();
                                 Msg::Nope
                             })
                         >
-                            <form onsubmit=self.link.callback(|event: Event|  Msg::SubmitScore(event))>
-                                <h2>{"New Life Score"}</h2>
-                                <p>{"Well, maybe. We need to verify all of the recently submitted results to know for certain."}</p>
-                                <div class="name-input-wrapper">
-                                    <label>{"Enter Name (4 chars max.)"}
-                                    <input placeholder="ABCD"
-                                    class="name-input" oninput=self.link.callback(|event: InputData| Msg::ChangeUserName(event.value))
-                                        maxlength="4"
-                                    />
-                                    </label>
-                                </div>
-                                <div class="modal-buttons">
-                                    <input type={"button" }
-                                        value={"Ignore"}
-                                        class="button ignore-button" onclick=self.link.callback(|event: MouseEvent|  Msg::DismissScoreModalClick(event))
-                                    />
-                                    <input
-                                        type="submit"
-                                        class="button submit-button"
-                                        disabled={!self.state.user_name_is_valid}
-                                        value={"Submit"}
-                                    />
-                                </div>
-                            </form>
+
+                            {self.if_then_render(
+                                has_high_score,
+                                html!{
+                                    <form onsubmit=self.link.callback(|event: Event|  Msg::SubmitScore(event))>
+
+
+                                        {self.if_then_render(
+                                            has_only_life_high_score,
+                                            html!{
+                                                <>
+                                                    <h2>{"New Life Score"}</h2>
+                                                    <p>{"Your cellules lived a long time. Enough to be considered for the high score list after we verify it."}</p>
+                                                </>
+                                            }
+                                        )}
+                                        {self.if_then_render(
+                                            has_only_death_high_score,
+                                            html!{
+                                                <>
+                                                    <h2>{"New Death Score"}</h2>
+                                                    <p>{"Not many cellules were left alive. For a Death score that is good. We will verify it soon and maybe put you on the high score list."}</p>
+                                                </>
+                                            }
+                                        )}
+                                        {self.if_then_render(
+                                            has_both_high_scores,
+                                            html!{
+                                                <>
+                                                    <h2>{"New Life and Death Score"}</h2>
+                                                    <p>{"That is amazing!!! Well, maybe. We need to verify all of the recently submitted results to know for certain."}</p>
+                                                </>
+                                            }
+                                        )}
+                                        <div class="metrics">
+                                            <div class="metric">
+                                                <div class="metric-label">{"Edits"}</div>
+                                                <div class="metric-value">{self.state.modifications.len()}</div>
+                                            </div>
+                                            <div class="metric">
+                                                <div class="metric-label">{"Steps"}</div>
+                                                <div class="metric-value">{self.state.step_count}</div>
+                                            </div>
+                                            <div class="metric">
+                                                <div class="metric-label">{"Active"}</div>
+                                                <div class="metric-value">{self.state.active_count}</div>
+                                            </div>
+                                        </div>
+                                        <div class="name-input-wrapper">
+                                            <label>{"Enter Name (4 chars max.)"}
+                                                <input
+                                                    placeholder="ABCD"
+                                                    class="name-input" oninput=self.link.callback(|event: InputData| Msg::ChangeUserName(event.value))
+                                                    maxlength="4"
+                                                />
+                                            </label>
+                                        </div>
+                                        <div class="modal-buttons">
+                                            <input type={"button" }
+                                                value={"Ignore"}
+                                                class="button ignore-button" onclick=self.link.callback(|event: MouseEvent|  Msg::DismissScoreModalClick(event))
+                                            />
+                                            <input
+                                                type="submit"
+                                                class="button submit-button"
+                                                disabled={!self.state.user_name_is_valid}
+                                                value={"Submit"}
+                                            />
+                                        </div>
+                                    </form>
+                                }
+                            )}
+
+
+                            {self.if_then_render(
+                                !has_high_score,
+                                html!{
+                                    <div>
+                                        <h2>{"Bummer! Try Again?"}</h2>
+                                        <p>{"You didnt get a Life or a Death score. No worries, it didn't cost you anything."}</p>
+                                        <input
+                                            type="button"
+                                            class="button try-again-button"
+                                            value={"Try Again"}
+                                            onclick=self.link.callback(|event: MouseEvent|  Msg::DismissScoreModalClick(event))
+                                        />
+                                    </div>
+                                }
+                            )}
                         </div>
-                    </div>
-                    <div class=self.death_score_classes()>
-                        <h1>{"New Death Score Record!!!"}</h1>
                     </div>
 
                 </div>
@@ -447,24 +545,8 @@ impl Component for App {
 }
 
 impl App {
-    pub fn start_wrapper_classes(&self) -> String {
-        if self.state.is_started {
-            "start-wrapper started".to_string()
-        } else {
-            "start-wrapper".to_string()
-        }
-    }
-
-    pub fn life_score_classes(&self) -> String {
-        if self.state.has_life_high_score {
-            "overlay".to_string()
-        } else {
-            "overlay hidden".to_string()
-        }
-    }
-
-    pub fn death_score_classes(&self) -> String {
-        if self.state.has_death_high_score {
+    pub fn modal_classes(&self) -> String {
+        if self.state.step_count > 0 && !self.state.is_playing {
             "overlay".to_string()
         } else {
             "overlay hidden".to_string()
@@ -483,7 +565,7 @@ impl App {
 
     fn fetch_scores(&mut self) -> yew::services::fetch::FetchTask {
         let callback = self.link.callback(
-            move |response: Response<Json<Result<ResultResponseData, Error>>>| {
+            move |response: Response<Json<Result<GetScoresResponseData, Error>>>| {
                 let (meta, Json(data)) = response.into_parts();
                 info!("META: {:?}, {:?}", meta, data);
                 if meta.status.is_success() {
@@ -595,6 +677,75 @@ impl App {
         let render_frame = self.link.callback(|_| Msg::HandleRender);
         let handle = RenderService::new().request_animation_frame(render_frame);
         self.render_loop = Some(Box::new(handle));
+    }
+
+    fn check_life_score(&mut self) -> bool {
+        let mut sorted_seed_scores = self
+            .previous_scores
+            .iter()
+            .cloned()
+            .filter(|score| {
+                score.seed_label == self.state.current_seed.label
+                    && score.modifications.len() == self.state.modifications.len()
+            })
+            .collect::<Vec<GetScoresResponseDataItem>>();
+
+        sorted_seed_scores.sort_by(|score_a, score_b| {
+            score_a.step_count.partial_cmp(&score_b.step_count).unwrap()
+        });
+
+        if sorted_seed_scores.len() > 0 {
+            let length = std::cmp::min(sorted_seed_scores.len() - 1, 20);
+
+            let (top_scores, _) = sorted_seed_scores.split_at(length);
+
+            // need to check active count for tie breakers
+            let is_life_score = top_scores.last().unwrap().step_count < self.state.step_count;
+
+            is_life_score
+        } else {
+            true
+        }
+    }
+
+    fn check_death_score(&mut self) -> bool {
+        let mut sorted_seed_scores = self
+            .previous_scores
+            .iter()
+            .cloned()
+            .filter(|score| {
+                score.seed_label == self.state.current_seed.label
+                    && score.modifications.len() == self.state.modifications.len()
+            })
+            .collect::<Vec<GetScoresResponseDataItem>>();
+
+        sorted_seed_scores.sort_by(|score_a, score_b| {
+            score_b
+                .active_count
+                .partial_cmp(&score_a.active_count)
+                .unwrap()
+        });
+
+        if sorted_seed_scores.len() > 0 {
+            let length = std::cmp::min(sorted_seed_scores.len() - 1, 20);
+
+            let (top_scores, _) = sorted_seed_scores.split_at(length);
+
+            // need to check active count for tie breakers
+            let is_death_score = top_scores.last().unwrap().active_count > self.state.active_count;
+
+            is_death_score
+        } else {
+            true
+        }
+    }
+
+    fn if_then_render(&self, condition: bool, snippet: VNode) -> VNode {
+        if condition {
+            snippet
+        } else {
+            VNode::from(VList::new())
+        }
     }
 }
 
