@@ -60,7 +60,7 @@ impl Component for GameGrid {
           / canvas_element.client_width() as f32;
 
         let translation_ratio_y = ((BASE_CELLULE_SIZE as f32) * self.props.cellules_height as f32)
-            / canvas_element.client_height() as f32;
+          / canvas_element.client_height() as f32;
 
         self.render_canvas(canvas_element);
 
@@ -75,11 +75,6 @@ impl Component for GameGrid {
         let row_number =
           ((mouse_event.offset_y() as f32) * translation_ratio_y / BASE_CELLULE_SIZE as f32) as i32;
 
-        info!(
-          " click happened in grid {:?} {:?}",
-          column_number, row_number
-        );
-
         self.props.onclick.emit((column_number, row_number));
 
         true
@@ -89,8 +84,6 @@ impl Component for GameGrid {
 
   fn change(&mut self, props: Self::Properties) -> ShouldRender {
     self.props = props;
-
-    // info!("change event in grid");
 
     let canvas_element = self.canvas_ref.cast::<HtmlCanvasElement>().unwrap();
 

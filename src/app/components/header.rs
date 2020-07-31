@@ -1,17 +1,17 @@
 #[allow(dead_code)]
 use log::*;
-use yew::format::{Json};
+use yew::format::Json;
 use yew::prelude::*;
-use yew::services::storage::{ Area,StorageService };
+use yew::services::storage::{Area, StorageService};
 
-use game_of_life_core::core::seeds::seeds::Seed;
 use crate::app::components::fps::FpsDetector;
+use game_of_life_core::core::seeds::seeds::Seed;
 
 #[derive(Clone, PartialEq)]
 pub enum Msg {
     Reset,
     SeedChanged(usize),
-    UpdateRate(String)
+    UpdateRate(String),
 }
 
 #[derive(Properties, Clone, PartialEq)]
@@ -47,7 +47,7 @@ pub struct AppHeader {
     link: ComponentLink<Self>,
     current_seed: Seed,
     rate: f64,
-    created_timestamp: f64
+    created_timestamp: f64,
 }
 
 impl Component for AppHeader {
@@ -55,6 +55,7 @@ impl Component for AppHeader {
     type Properties = Props;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
+        info!("CREATED");
         Self {
             props,
             link,
@@ -63,26 +64,23 @@ impl Component for AppHeader {
                 label: "Loading".to_owned(),
             },
             rate: 60.0,
-            created_timestamp: js_sys::Date::now()
+            created_timestamp: js_sys::Date::now(),
         }
     }
 
     #[allow(dead_code)]
     fn update(&mut self, message: Self::Message) -> ShouldRender {
+        info!("UPDATE");
         match message {
             Msg::Reset => {
-                // false
-                info!("reset happening");
                 self.props.on_seed_change.emit(self.current_seed.clone());
             }
             Msg::SeedChanged(seed_option_index) => {
-                info!("Seed changed");
                 let seed_option = self.props.seed_options[seed_option_index].clone();
                 self.current_seed = seed_option.clone();
                 self.props.on_seed_change.emit(seed_option);
             }
             Msg::UpdateRate(rate) => {
-                info!("rate {:?}", rate);
                 let rate_f64 = rate.parse::<f64>().unwrap();
                 self.props.on_rate_change.emit(rate_f64);
                 self.rate = rate_f64;
@@ -93,6 +91,7 @@ impl Component for AppHeader {
     }
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender {
+        info!("CHANGE");
         self.props = props.clone();
         if self.current_seed.label == "Loading".to_owned() {
             self.current_seed = props.seed_options[0].clone();
@@ -108,6 +107,7 @@ impl Component for AppHeader {
     }
 
     fn view(&self) -> Html {
+        info!("VIEW");
         html! {
             <>
                 <h1>{ "Cellule Life" }</h1>
@@ -115,7 +115,6 @@ impl Component for AppHeader {
                     <div class="controls">
                         <select onchange=self.link.callback(|event: ChangeData| match event {
                             ChangeData::Select(element) => {
-                                info!("element");
                                 Msg::SeedChanged(element.selected_index() as usize)
                             }
                             _ => unimplemented!()

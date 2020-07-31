@@ -264,18 +264,15 @@ impl Component for App {
                 }
             }
             Msg::HandleGetScoresResponse(get_scores_response) => {
-                info!("get scores response {:?}", get_scores_response);
-
                 self.previous_scores = get_scores_response.unwrap().scores;
 
                 self.state.has_no_network = false;
             }
             Msg::HandleGetScoresError => {
-                info!("HANDLING ERRROR");
                 self.state.has_no_network = true;
             }
             Msg::HandleSendResultResponse(send_result_response) => {
-                info!("send result response {:?}", send_result_response)
+                // info!("send result response {:?}", send_result_response)
             }
             Msg::HandleSeedChange(seed) => {
                 self.state.is_started = false;
@@ -297,7 +294,6 @@ impl Component for App {
                 self.history.clear_previous_steps();
             }
             Msg::StepGame => {
-                // info!("step clicked");
                 if self.state.is_playing {
                     #[allow(unused_assignments)]
                     let mut in_endless_loop = false;
@@ -336,23 +332,19 @@ impl Component for App {
                 self.update(Msg::HandleSeedChange(self.state.current_seed.clone()));
             }
             Msg::DismissScoreModalClick(event) => {
-                info!("Dismissing Modal");
                 event.prevent_default();
                 self.update(Msg::DismissScoreModal);
             }
             Msg::SubmitScore(event) => {
-                info!("Submitting Score");
                 event.prevent_default();
                 self.state.has_life_high_score = false;
                 self.state.has_death_high_score = false;
-                info!("submitted: {:?}", self.state.user_name);
                 // make fetch request
                 self.send_result_fetch_task = Some(self.post_results());
 
                 self.update(Msg::HandleSeedChange(self.state.current_seed.clone()));
             }
             Msg::ChangeUserName(user_name) => {
-                // info!("{:?}", user_name);
                 self.state.user_name = user_name;
                 self.state.user_name_is_valid = !containsProfanity(&self.state.user_name);
             }
@@ -367,12 +359,10 @@ impl Component for App {
                 }
             }
             Msg::HandleFpsDetection(fps) => {
-                info!("handling max fps {:?}", fps);
                 self.max_fps = fps;
             }
             Msg::HandleRateChange(rate) => {
                 self.state.rate = rate;
-                info!("handling rate change: {:?}", rate);
             }
             Msg::Nope => {}
         }
@@ -567,7 +557,6 @@ impl App {
         let callback = self.link.callback(
             move |response: Response<Json<Result<GetScoresResponseData, Error>>>| {
                 let (meta, Json(data)) = response.into_parts();
-                info!("META: {:?}, {:?}", meta, data);
                 if meta.status.is_success() {
                     Msg::HandleGetScoresResponse(data)
                 } else {
@@ -590,7 +579,6 @@ impl App {
         let callback = self.link.callback(
             move |response: Response<Json<Result<ResultResponseData, Error>>>| {
                 let (meta, Json(data)) = response.into_parts();
-                info!("META: {:?}, {:?}", meta, data);
                 if meta.status.is_success() {
                     Msg::HandleSendResultResponse(data)
                 } else {
@@ -666,14 +654,10 @@ impl App {
             })
             .collect::<js_sys::Array>();
 
-        info!("{:?}", entries);
-
         env_vars
     }
 
     fn render_next_frame(&mut self) {
-        // info!("now: {:?}", now);
-
         let render_frame = self.link.callback(|_| Msg::HandleRender);
         let handle = RenderService::new().request_animation_frame(render_frame);
         self.render_loop = Some(Box::new(handle));
@@ -744,7 +728,7 @@ impl App {
         if condition {
             snippet
         } else {
-            VNode::from(VList::new())
+            html! {}
         }
     }
 }

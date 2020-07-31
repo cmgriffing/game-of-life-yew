@@ -5,10 +5,9 @@ use wasm_bindgen::{closure::Closure, convert::IntoWasmAbi, prelude::wasm_bindgen
 use yew::prelude::*;
 use yew::services::{RenderService, Task};
 
-
 #[derive(Clone, PartialEq)]
 pub enum Msg {
-    RenderFrame,
+  RenderFrame,
 }
 
 #[derive(PartialEq, Clone, Properties)]
@@ -23,88 +22,82 @@ pub struct FpsDetector {
   recent_timestamp: f64,
   timings: Vec<f64>,
   render_loop: Option<Box<dyn Task>>,
-  finished: bool
+  finished: bool,
 }
 
 impl Component for FpsDetector {
-
   type Message = Msg;
   type Properties = Props;
 
   fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-      Self {
-          props,
-          link,
-          timings: vec![],
-          render_loop: None,
-          recent_timestamp: js_sys::Date::now(),
-          finished: false
-      }
+    Self {
+      props,
+      link,
+      timings: vec![],
+      render_loop: None,
+      recent_timestamp: js_sys::Date::now(),
+      finished: false,
+    }
   }
 
   #[allow(dead_code)]
   fn update(&mut self, message: Self::Message) -> ShouldRender {
-      match message {
-          Msg::RenderFrame => {
-              info!("render happening");
+    match message {
+      Msg::RenderFrame => {
+        let now = js_sys::Date::now();
+        let current_timing = now - self.recent_timestamp;
+        self.timings.push(current_timing);
+        self.recent_timestamp = now;
 
-              let now = js_sys::Date::now();
-              let current_timing = now - self.recent_timestamp;
-              self.timings.push(current_timing);
-              self.recent_timestamp = now;
-
-              // 67 is 60 frames plus padding for removing wonky values
-              let max_frame_count = 120;
-              if self.timings.len() > max_frame_count {
-
-                let skip_frame_count = max_frame_count / 10;
-                for i in 0..skip_frame_count {
-                  self.timings.remove(0);
-                }
-                self.timings.shrink_to_fit();
-
-                let sum = self.timings.iter().fold(0.0, |acc, x| acc + x);
-                let avg = sum / (self.timings.len() as f64);
-                info!("frame rate: {:?} ... {:?}", avg, self.timings);
-                info!("timings: {:?} ... {:?}", self.timings[0], self.timings[1]);
-                info!("avg: {:?}", (1000.0 / avg));
-
-                info!("timings: {:?} ... {}", self.timings[0], self.timings[0]);
-
-                let margin_of_error: f64 = avg * 0.2;
-                let filtered_timings: Vec<f64> = self.timings.clone()
-                  .iter().filter(|timing| {
-                    if timing > &&(avg + margin_of_error) {
-                      false
-                    } else if timing < &&(avg - margin_of_error) {
-                      false
-                    } else {
-                      true
-                    }
-                  })
-                  .collect::<Vec<&f64>>()
-                  .iter()
-                  .map(|timing| timing.to_owned().to_owned())
-                  .collect::<Vec<f64>>();
-
-                let filtered_sum = filtered_timings.iter().fold(0.0, |acc, x| acc + x);
-                let filtered_avg = filtered_sum / (filtered_timings.len() as f64);
-
-                info!("filtered_avg: {:?}", (1000.0 / filtered_avg));
-
-                self.props.oncomplete.emit(math::round::half_to_even(1000.0 / filtered_avg, 0) as i64);
-                self.finished = true;
-              }
-
+        // 67 is 60 frames plus padding for removing wonky values
+        let max_frame_count = 120;
+        if self.timings.len() > max_frame_count {
+          let skip_frame_count = max_frame_count / 10;
+          for i in 0..skip_frame_count {
+            self.timings.remove(0);
           }
-      }
+          self.timings.shrink_to_fit();
 
-      true
+          let sum = self.timings.iter().fold(0.0, |acc, x| acc + x);
+          let avg = sum / (self.timings.len() as f64);
+
+          let margin_of_error: f64 = avg * 0.2;
+          let filtered_timings: Vec<f64> = self
+            .timings
+            .clone()
+            .iter()
+            .filter(|timing| {
+              if timing > &&(avg + margin_of_error) {
+                false
+              } else if timing < &&(avg - margin_of_error) {
+                false
+              } else {
+                true
+              }
+            })
+            .collect::<Vec<&f64>>()
+            .iter()
+            .map(|timing| timing.to_owned().to_owned())
+            .collect::<Vec<f64>>();
+
+          let filtered_sum = filtered_timings.iter().fold(0.0, |acc, x| acc + x);
+          let filtered_avg = filtered_sum / (filtered_timings.len() as f64);
+
+          self
+            .props
+            .oncomplete
+            .emit(math::round::half_to_even(1000.0 / filtered_avg, 0) as i64);
+          self.finished = true;
+        }
+      }
+    }
+
+    true
   }
 
   fn change(&mut self, props: Self::Properties) -> ShouldRender {
-      self.props = props.clone();
-      true
+    self.props = props.clone();
+    true
   }
 
   fn rendered(&mut self, first_render: bool) {
@@ -114,10 +107,10 @@ impl Component for FpsDetector {
   }
 
   fn view(&self) -> Html {
-      html! {
-          <>
-          </>
-      }
+    html! {
+        <>
+        </>
+    }
   }
 }
 
