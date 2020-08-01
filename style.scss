@@ -130,7 +130,8 @@ input[type="submit"] {
   }
 }
 
-.reset-button {
+.reset-button,
+input.try-again-button {
   margin-right: 0;
   background: $error-color;
   color: #fff;
@@ -142,6 +143,10 @@ input[type="submit"] {
     background: $error-color;
     color: #fff;
   }
+}
+
+input.try-again-button {
+  width: 100%;
 }
 
 .metrics {
@@ -187,8 +192,7 @@ input[type="submit"] {
 .start-wrapper {
   position: fixed;
   bottom: 20px;
-  left: 0;
-  right: 0;
+  width: 80%;
   text-align: center;
   transition: transform 300ms;
 
@@ -200,7 +204,7 @@ input[type="submit"] {
 .start-button {
   background: $end-color;
   color: #fff;
-  width: 80%;
+  width: 100%;
   opacity: 0.8;
   transition: opacity 300ms;
 
