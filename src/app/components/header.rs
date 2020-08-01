@@ -4,6 +4,8 @@ use yew::format::Json;
 use yew::prelude::*;
 use yew::services::storage::{Area, StorageService};
 
+use yewtil::NeqAssign;
+
 use crate::app::components::fps::FpsDetector;
 use game_of_life_core::core::seeds::seeds::Seed;
 
@@ -55,7 +57,7 @@ impl Component for AppHeader {
     type Properties = Props;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        info!("CREATED");
+        // info!("CREATED");
         Self {
             props,
             link,
@@ -70,7 +72,7 @@ impl Component for AppHeader {
 
     #[allow(dead_code)]
     fn update(&mut self, message: Self::Message) -> ShouldRender {
-        info!("UPDATE");
+        // info!("UPDATE");
         match message {
             Msg::Reset => {
                 self.props.on_seed_change.emit(self.current_seed.clone());
@@ -91,23 +93,28 @@ impl Component for AppHeader {
     }
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender {
-        info!("CHANGE");
-        self.props = props.clone();
-        if self.current_seed.label == "Loading".to_owned() {
-            self.current_seed = props.seed_options[0].clone();
-            props.on_seed_change.emit(props.seed_options[0].clone());
-        }
+        if self.props.neq_assign(props) {
+            // info!("CHANGE");
+            if self.current_seed.label == "Loading".to_owned() {
+                self.current_seed = self.props.seed_options[0].clone();
+                self.props
+                    .on_seed_change
+                    .emit(self.props.seed_options[0].clone());
+            }
 
-        if self.rate > self.props.max_fps as f64 {
-            self.rate = self.props.max_fps as f64;
-            self.props.on_rate_change.emit(self.rate);
-        }
+            if self.rate > self.props.max_fps as f64 {
+                self.rate = self.props.max_fps as f64;
+                self.props.on_rate_change.emit(self.rate);
+            }
 
-        true
+            true
+        } else {
+            false
+        }
     }
 
     fn view(&self) -> Html {
-        info!("VIEW");
+        // info!("VIEW");
         html! {
             <>
                 <h1>{ "Cellule Life" }</h1>

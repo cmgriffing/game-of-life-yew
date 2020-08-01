@@ -3,6 +3,7 @@ mod components;
 use anyhow::Error;
 use log::*;
 use serde_derive::{Deserialize, Serialize};
+use std::collections::HashMap;
 use wasm_bindgen::{closure::Closure, convert::IntoWasmAbi, prelude::wasm_bindgen, JsValue};
 use yew::format::{Json, Nothing};
 use yew::prelude::*;
@@ -184,6 +185,7 @@ impl Component for App {
             cellules: current_seed.cellules.clone(),
             cellules_width: 50,
             cellules_height: 40,
+            cellule_neighbors: HashMap::new(),
         };
 
         let state = State {
@@ -418,6 +420,7 @@ impl Component for App {
                         cellules_width={self.state.game_state.cellules_width}
                         cellules_height={self.state.game_state.cellules_height}
                         onclick=self.link.callback(Msg::GridClicked)
+                        cellule_neighbors={self.state.game_state.cellule_neighbors.clone()}
                     ></GameGrid>
 
                     <div class="hacky-spacer"></div>
@@ -439,7 +442,6 @@ impl Component for App {
                                 has_high_score,
                                 html!{
                                     <form onsubmit=self.link.callback(|event: Event|  Msg::SubmitScore(event))>
-
 
                                         {self.if_then_render(
                                             has_only_life_high_score,

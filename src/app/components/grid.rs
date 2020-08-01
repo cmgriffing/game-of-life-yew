@@ -1,5 +1,7 @@
+use std::collections::HashMap;
 // use crate::app::core::game::{Cellule, LifeState};
 use game_of_life_core::core::game::{Cellule, LifeState};
+use yewtil::NeqAssign;
 
 use crate::utils::colors::*;
 
@@ -28,6 +30,9 @@ pub struct Props {
   pub cellules_width: usize,
   #[prop_or_default]
   pub cellules_height: usize,
+
+  #[prop_or_default]
+  pub cellule_neighbors: HashMap<usize, Vec<Cellule>>,
 
   #[prop_or_default]
   pub onclick: Callback<(i32, i32)>,
@@ -83,13 +88,14 @@ impl Component for GameGrid {
   }
 
   fn change(&mut self, props: Self::Properties) -> ShouldRender {
-    self.props = props;
+    if self.props.neq_assign(props) {
+      let canvas_element = self.canvas_ref.cast::<HtmlCanvasElement>().unwrap();
 
-    let canvas_element = self.canvas_ref.cast::<HtmlCanvasElement>().unwrap();
-
-    self.render_canvas(canvas_element);
-
-    true
+      self.render_canvas(canvas_element);
+      true
+    } else {
+      false
+    }
   }
 
   fn view(&self) -> Html {
@@ -116,6 +122,13 @@ impl GameGrid {
       canvas_element.get_context("2d").unwrap().unwrap(),
     ));
     ctx.set_fill_style(&JsValue::from_str("#aaaadd"));
+
+    ctx.fill_rect(
+      0.0,
+      0.0,
+      BASE_CELLULE_SIZE as f64 * (self.props.cellules_width as f64),
+      BASE_CELLULE_SIZE as f64 * (self.props.cellules_height as f64),
+    );
 
     let gradient_manager = GradientManager::new(
       Color {
@@ -146,24 +159,96 @@ impl GameGrid {
         let color = gradient_manager.interpolate_colors(progress_percentage);
         let new_color = format!("rgb({}, {}, {})", color.red, color.green, color.blue);
         ctx.set_fill_style(&JsValue::from_str(new_color.as_str()));
-        ctx.fill_rect(
-          x as f64,
-          y as f64,
-          BASE_CELLULE_SIZE as f64,
-          BASE_CELLULE_SIZE as f64,
-        );
+
+        ctx.begin_path();
+
+        let radius = (BASE_CELLULE_SIZE as f64) / 2.0;
+
+        ctx
+          .ellipse(
+            x as f64 + radius,
+            y as f64 + radius,
+            radius,
+            radius,
+            0.0,
+            0.0,
+            6.29,
+          )
+          .unwrap();
+        ctx.fill();
+        ctx.close_path();
+
+        self.draw_neighbors(&ctx, cellule_index, x as f64, y as f64);
+
         ctx.set_fill_style(&JsValue::from_str("#aaaadd"));
-      } else {
-        ctx.fill_rect(
-          x as f64,
-          y as f64,
-          BASE_CELLULE_SIZE as f64,
-          BASE_CELLULE_SIZE as f64,
-        );
       }
     }
 
     canvas_element
+  }
+
+  fn draw_neighbors(
+    &self,
+    ctx: &CanvasRenderingContext2d,
+    cellule_index: usize,
+    cellule_x: f64,
+    cellule_y: f64,
+  ) {
+    let neighbors = self.props.cellule_neighbors.get(&cellule_index);
+
+    if neighbors.is_some() {
+      neighbors
+        .unwrap()
+        .iter()
+        .enumerate()
+        .for_each(|(neighbor_index, cellule)| {
+          if cellule.life_state == LifeState::Alive {
+            self.draw_neighbor_cell(ctx, cellule, neighbor_index, cellule_x, cellule_y)
+          }
+        });
+    }
+  }
+
+  fn draw_neighbor_cell(
+    &self,
+    ctx: &CanvasRenderingContext2d,
+    cellule: &Cellule,
+    neighbor_index: usize,
+    cellule_x: f64,
+    cellule_y: f64,
+  ) {
+    let radius = (BASE_CELLULE_SIZE as f64) / 2.0;
+    match neighbor_index {
+      0 => self.draw_neighbor_ellipse(ctx, cellule_x - radius, cellule_y - radius),
+      1 => self.draw_neighbor_ellipse(ctx, cellule_x, cellule_y - radius),
+      2 => self.draw_neighbor_ellipse(ctx, cellule_x + radius, cellule_y - radius),
+      3 => self.draw_neighbor_ellipse(ctx, cellule_x + radius, cellule_y),
+      4 => self.draw_neighbor_ellipse(ctx, cellule_x + radius, cellule_y + radius),
+      5 => self.draw_neighbor_ellipse(ctx, cellule_x, cellule_y + radius),
+      6 => self.draw_neighbor_ellipse(ctx, cellule_x - radius, cellule_y + radius),
+      7 => self.draw_neighbor_ellipse(ctx, cellule_x - radius, cellule_y),
+      _ => info!("BOOOOOO"),
+    }
+  }
+
+  fn draw_neighbor_ellipse(&self, ctx: &CanvasRenderingContext2d, x: f64, y: f64) {
+    ctx.begin_path();
+
+    let radius = (BASE_CELLULE_SIZE as f64) / 2.0;
+
+    ctx
+      .ellipse(
+        x as f64 + radius,
+        y as f64 + radius,
+        radius,
+        radius,
+        0.0,
+        0.0,
+        6.29,
+      )
+      .unwrap();
+    ctx.fill();
+    ctx.close_path();
   }
 }
 
