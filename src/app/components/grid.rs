@@ -244,7 +244,7 @@ impl GameGrid {
   }
 
   fn draw_neighbor_ellipse(&self, ctx: &CanvasRenderingContext2d, x: f64, y: f64) {
-    let step = ((js_sys::Date::now() % 40.0) - 10.0) / 100.0;
+    let step = ((js_sys::Date::now() / 200.0).sin() / 5.0) + 0.1;
 
     ctx.begin_path();
 
