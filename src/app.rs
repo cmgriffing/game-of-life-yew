@@ -721,10 +721,15 @@ impl App {
 
             let (top_scores, _) = sorted_seed_scores.split_at(length);
 
-            // need to check active count for tie breakers
-            let is_death_score = top_scores.last().unwrap().active_count > self.state.active_count;
+            let highest_score = top_scores.last();
 
-            is_death_score
+            if highest_score.is_some() {
+                // need to check active count for tie breakers
+                let is_death_score = highest_score.unwrap().active_count > self.state.active_count;
+                is_death_score
+            } else {
+                true
+            }
         } else {
             true
         }
