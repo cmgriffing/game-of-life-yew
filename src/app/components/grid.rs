@@ -22,12 +22,16 @@ pub enum Msg {
 pub struct Props {
   #[prop_or_default]
   pub inset: bool,
+
   #[prop_or_default]
   pub children: Children,
+
   #[prop_or_default]
   pub cellules: Vec<Cellule>,
+
   #[prop_or_default]
   pub cellules_width: usize,
+
   #[prop_or_default]
   pub cellules_height: usize,
 
@@ -218,20 +222,30 @@ impl GameGrid {
     cellule_y: f64,
   ) {
     let radius = (BASE_CELLULE_SIZE as f64) / 2.0;
-    match neighbor_index {
-      0 => self.draw_neighbor_ellipse(ctx, cellule_x - radius, cellule_y - radius),
-      1 => self.draw_neighbor_ellipse(ctx, cellule_x, cellule_y - radius),
-      2 => self.draw_neighbor_ellipse(ctx, cellule_x + radius, cellule_y - radius),
-      3 => self.draw_neighbor_ellipse(ctx, cellule_x + radius, cellule_y),
-      4 => self.draw_neighbor_ellipse(ctx, cellule_x + radius, cellule_y + radius),
-      5 => self.draw_neighbor_ellipse(ctx, cellule_x, cellule_y + radius),
-      6 => self.draw_neighbor_ellipse(ctx, cellule_x - radius, cellule_y + radius),
-      7 => self.draw_neighbor_ellipse(ctx, cellule_x - radius, cellule_y),
-      _ => info!("BOOOOOO"),
-    }
+    let modifiers = match neighbor_index {
+      0 => (-1.0, -1.0),
+      1 => (0.0, -1.0),
+      2 => (1.0, -1.0),
+      3 => (1.0, 0.0),
+      4 => (1.0, 1.0),
+      5 => (0.0, 1.0),
+      6 => (-1.0, 1.0),
+      7 => (-1.0, 0.0),
+      _ => (0.0, 0.0),
+    };
+
+    let (modifier_x, modifier_y) = modifiers;
+
+    self.draw_neighbor_ellipse(
+      ctx,
+      cellule_x + (radius * modifier_x),
+      cellule_y + (radius * modifier_y),
+    )
   }
 
   fn draw_neighbor_ellipse(&self, ctx: &CanvasRenderingContext2d, x: f64, y: f64) {
+    let step = ((js_sys::Date::now() % 40.0) - 10.0) / 100.0;
+
     ctx.begin_path();
 
     let radius = (BASE_CELLULE_SIZE as f64) / 2.0;
@@ -240,8 +254,8 @@ impl GameGrid {
       .ellipse(
         x as f64 + radius,
         y as f64 + radius,
-        radius,
-        radius,
+        radius * (1.2 + step),
+        radius * (1.2 + step),
         0.0,
         0.0,
         6.29,

@@ -685,10 +685,14 @@ impl App {
 
             let (top_scores, _) = sorted_seed_scores.split_at(length);
 
-            // need to check active count for tie breakers
-            let is_life_score = top_scores.last().unwrap().step_count < self.state.step_count;
+            let lowest_score = top_scores.last();
 
-            is_life_score
+            if lowest_score.is_some() {
+                // need to check active count for tie breakers
+                lowest_score.unwrap().step_count < self.state.step_count
+            } else {
+                true
+            }
         } else {
             true
         }
