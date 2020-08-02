@@ -30,6 +30,7 @@ html {
 h1 {
   font-family: "Major Mono Display", monospace;
   text-transform: uppercase;
+  padding-right: 80px;
 }
 
 * {
@@ -114,7 +115,7 @@ input[type="submit"] {
   flex-wrap: wrap;
   width: 100%;
 
-  @media (min-width: $breakpoint-sm) {
+  @media (min-width: $breakpoint-md) {
     flex-wrap: nowrap;
   }
 
@@ -126,6 +127,43 @@ input[type="submit"] {
     select {
       max-width: 250px;
       width: 100%;
+    }
+  }
+
+  .slider-section {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+
+    @media (min-width: $breakpoint-md) {
+      flex-direction: column;
+    }
+
+    label {
+      margin-right: 20px;
+
+      @media (min-width: $breakpoint-md) {
+        margin-right: 0;
+      }
+    }
+
+    .slider-component {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+
+      input {
+        border-radius: 100px;
+      }
+
+      @media (min-width: $breakpoint-md) {
+        input {
+          margin-top: 6px;
+          padding: 0px;
+        }
+      }
     }
   }
 }
@@ -217,6 +255,56 @@ input.try-again-button {
 
 //-----------------------------
 
-.slider-component {
-  display: flex;
+.getting-started-button {
+  width: 100%;
+
+  background: $end-color;
+  color: #fff;
+  width: 100%;
+  opacity: 0.8;
+  transition: opacity 300ms;
+
+  &:hover {
+    background: $end-color;
+    opacity: 1;
+    color: #fff;
+  }
+}
+
+.mobile-menu-button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 6px 10px;
+
+  @media (min-width: $breakpoint-md) {
+    display: none;
+  }
+}
+
+.mobile-config-row {
+  overflow: hidden;
+  height: 0;
+  transition: height 300ms;
+
+  &.showing {
+    height: 50px;
+    margin: 10px 0;
+  }
+
+  @media (min-width: $breakpoint-md) {
+    height: 50px;
+    overflow: auto;
+
+    &.showing {
+      height: 50px;
+      margin: 0px;
+    }
+  }
+}
+
+.sr-only {
+  position: absolute;
+  top: -10000px;
+  left: -10000px;
 }
