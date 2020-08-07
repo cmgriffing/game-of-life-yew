@@ -25,7 +25,8 @@ use game_of_life_core::core::history::History;
 #[allow(dead_code)]
 use game_of_life_core::core::seeds::seeds::{get_seeds, seed_middle_line_starter, Seed};
 
-const KEY: &str = "yew.gameofdeath.self";
+const GRID_KEY: &str = "yew.gameofdeath.grid";
+const INTRO_MODAL_KEY: &str = "yew.gameofdeath.showing_intro_modal";
 
 struct EnvVars {
     API_URL_SUBMIT_RESULT: String,
@@ -46,6 +47,7 @@ pub struct App {
     env_vars: EnvVars,
     max_fps: i64,
     previous_scores: Vec<GetScoresResponseDataItem>,
+    showing_intro_modal: bool,
 }
 
 #[derive(Copy, Clone, Serialize, Deserialize, Debug)]
@@ -96,6 +98,7 @@ pub enum Msg {
     HandleRender,
     HandleRateChange(f64),
     HandleFpsDetection(i64),
+    DismissIntroModalClick,
     Nope,
 }
 
@@ -165,10 +168,18 @@ impl Component for App {
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
         let storage = StorageService::new(Area::Local).unwrap();
         let grid = {
-            if let Json(Ok(restored_grid)) = storage.restore(KEY) {
+            if let Json(Ok(restored_grid)) = storage.restore(GRID_KEY) {
                 restored_grid
             } else {
                 Vec::new()
+            }
+        };
+
+        let showing_intro_modal = {
+            if let Json(Ok(restored_showing_intro_modal)) = storage.restore(INTRO_MODAL_KEY) {
+                restored_showing_intro_modal
+            } else {
+                true
             }
         };
 
@@ -218,6 +229,7 @@ impl Component for App {
             env_vars: App::get_env_vars(),
             max_fps: 60,
             previous_scores: vec![],
+            showing_intro_modal,
         }
     }
 
@@ -366,9 +378,13 @@ impl Component for App {
             Msg::HandleRateChange(rate) => {
                 self.state.rate = rate;
             }
+            Msg::DismissIntroModalClick => {
+                self.showing_intro_modal = false;
+                self.storage.store(INTRO_MODAL_KEY, Ok("false".to_owned()));
+            }
             Msg::Nope => {}
         }
-        self.storage.store(KEY, Json(&self.state.grid));
+        // self.storage.store(GRID_KEY, Json(&self.state.grid));
         true
     }
 
@@ -427,6 +443,22 @@ impl Component for App {
 
                     <div class="start-wrapper" hidden={self.state.has_no_network || self.state.is_started } style={game_styles}>
                         <button class="start-button" onclick=self.link.callback(|_|  Msg::Start)>{"Start"}</button>
+                    </div>
+
+                    <div class=self.intro_modal_classes() onclick=self.link.callback(|event: MouseEvent|  Msg::DismissIntroModalClick)>
+                        <div
+                            class="intro-modal"
+                            onclick=self.link.callback(|event: MouseEvent|  {
+                                event.stop_propagation();
+                                Msg::Nope
+                            })
+                        >
+                            <h2>{"Welcome to Cellule Life"}</h2>
+                            <p>{"The goal is simple. Make modifications to a seed. Those modifications determine how things play out."}</p>
+                            <p>{"A LIFE SCORE is what you get if your step count is higher than previous players. More active Cellules at the end is a tiebreaker."}</p>
+                            <p>{"A DEATH SCORE is achieved by having a low amount of active cellules. Less Steps at the end is a tiebreaker."}</p>
+                            <button class="getting-started-button" onclick=self.link.callback(|event: MouseEvent|  Msg::DismissIntroModalClick)>{"Get Started!"}</button>
+                        </div>
                     </div>
 
                     <div class=self.modal_classes() onclick=self.link.callback(|event: MouseEvent|  Msg::DismissScoreModalClick(event))>
@@ -539,6 +571,14 @@ impl Component for App {
 impl App {
     pub fn modal_classes(&self) -> String {
         if self.state.step_count > 0 && !self.state.is_playing {
+            "overlay".to_string()
+        } else {
+            "overlay hidden".to_string()
+        }
+    }
+
+    pub fn intro_modal_classes(&self) -> String {
+        if self.showing_intro_modal {
             "overlay".to_string()
         } else {
             "overlay hidden".to_string()

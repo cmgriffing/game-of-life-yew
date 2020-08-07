@@ -16,7 +16,7 @@ module.exports = (env, argv) => {
     entry: "./bootstrap.js",
     output: {
       path: distPath,
-      publicPath: "/game-of-life-yew/",
+      publicPath: "/game/",
       filename: "cellulelife.js",
       webassemblyModuleFilename: "cellulelife.wasm",
     },

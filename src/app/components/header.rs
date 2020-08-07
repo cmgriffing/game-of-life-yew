@@ -14,6 +14,7 @@ pub enum Msg {
     Reset,
     SeedChanged(usize),
     UpdateRate(String),
+    ToggleConfig,
 }
 
 #[derive(Properties, Clone, PartialEq)]
@@ -50,6 +51,7 @@ pub struct AppHeader {
     current_seed: Seed,
     rate: f64,
     created_timestamp: f64,
+    showing_config: bool,
 }
 
 impl Component for AppHeader {
@@ -67,6 +69,7 @@ impl Component for AppHeader {
             },
             rate: 60.0,
             created_timestamp: js_sys::Date::now(),
+            showing_config: false,
         }
     }
 
@@ -86,6 +89,9 @@ impl Component for AppHeader {
                 let rate_f64 = rate.parse::<f64>().unwrap();
                 self.props.on_rate_change.emit(rate_f64);
                 self.rate = rate_f64;
+            }
+            Msg::ToggleConfig => {
+                self.showing_config = !self.showing_config;
             }
         }
 
@@ -114,12 +120,16 @@ impl Component for AppHeader {
     }
 
     fn view(&self) -> Html {
+        let showing = if self.showing_config { "showing" } else { "" };
         // info!("VIEW");
         html! {
             <>
                 <h1>{ "Cellule Life" }</h1>
+                <button class="mobile-menu-button" onclick=self.link.callback(|_| Msg::ToggleConfig)>{"☰"}<span class="sr-only">
+                    {"Show or Hide menu"}
+                </span></button>
                 <header class="main-header">
-                    <div class="controls">
+                    <div class=format!("mobile-config-row controls {}", showing)>
                         <select onchange=self.link.callback(|event: ChangeData| match event {
                             ChangeData::Select(element) => {
                                 Msg::SeedChanged(element.selected_index() as usize)
@@ -137,7 +147,7 @@ impl Component for AppHeader {
 
                     <div class="spacer"></div>
 
-                    <div class="slider-section">
+                    <div class=format!("mobile-config-row slider-section {}", showing)>
                         <label labelFor="rate">{"Rate: "} {self.rate}{"fps"}</label>
                         <div class="slider-component">
                             <div class="slider-label-start">{"10"}</div>
